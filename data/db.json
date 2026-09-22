@@ -1,0 +1,33 @@
+{
+  "settings": {
+    "geminiKeys": [
+      {
+        "id": "key-1",
+        "name": "Clave Principal (Google AI Studio)",
+        "key": "",
+        "status": "untested",
+        "errorCount": 0
+      }
+    ],
+    "activeKeyIndex": 0,
+    "selectedModel": "gemini-3.5-flash-lite",
+    "systemPrompt": "Eres el asistente virtual inteligente de nuestra empresa en WhatsApp.\nTu objetivo es responder de manera educada, concisa, profesional y útil a los clientes.\nUtiliza únicamente la información provista en la Base de Conocimientos para responder dudas de servicios, precios y políticas.\nSi el usuario solicita una imagen, catálogo o foto de un producto y dispones de ella en el catálogo multimedia registrado, incluye al final de tu respuesta la etiqueta especial: [SEND_MEDIA:ID_DE_LA_IMAGEN].\nNunca inventes información que no esté en la base de conocimientos. Si no conoces un dato, indica amablemente que un asesor humano lo atenderá a la brevedad.",
+    "botEnabled": true,
+    "respondToGroups": false,
+    "antiBanDelayMin": 4,
+    "antiBanDelayMax": 8
+  },
+  "knowledgeBase": [
+    {
+      "title": "Conocimiento",
+      "content": "# MÉTODOS Y MONTOS DE PAGO\n# 🇵🇪 Perú\n\n**Titular:** David Ezequiel Salcedo Pablo\nMonto: 202 soles\n**BCP**\n\n* Soles\n\n  * N.° de Cuenta: **36590465789030**\n  * CCI: **00236519046578903059**\n* Dólares\n\n  * N.° de Cuenta: **36576792774104**\n  * CCI: **00236517679277410454**\n\n**BBVA**\n\n* N.° de Cuenta: **0011-0814-0202483599**\n* CCI: **011-814-000202483599-19**\n\n**Scotiabank**\n\n* N.° de Cuenta: **9400334018**\n* CCI: **00918220940033401870**\n\n**Banco de la Nación**\n\n* N.° de Cuenta: **04-580-695243**\n* CCI: **018-580-004580695243-13**\n\n**Yape / Plin**\n\n* Celular: **976 020 013**\n\n---\n\n# 🇧🇴 Bolivia\nMonto: 656 Bs\n**Titular:** Maria Viviana Loayza F.\n**C.I.:** 3645947 CH\n\n**Banco Unión**\n\n* N.° de Cuenta: **10000006912534**\n\n**Banco Ganadero**\n\n* N.° de Cuenta: **1310279144**\n\n**Banco Mercantil Santa Cruz**\n\n* N.° de Cuenta: **4025009376**\n\n---\n\n# 🇪🇨 Ecuador\nMonto: 57 USD\n**Titular:** ANDREA CHALACÁN\n**C.I.:** 1723229827\n\n**Banco Pichincha**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **2209226392**\n\n**Produbanco**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **20059422015**\n\n**Banco Guayaquil**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **0033987425**\n\n---\n\n# 🇲🇽 México\nMonto: 1 206 MN\n**Titular:** ALONDRA ZAMACONA HERNANDEZ\n\n**OXXO**\n\n* CLABE (Transferencias): **0585 9700 0153 9341 19**\n* Tarjeta (Pago en OXXO): **4741 7435 0474 0003**\n\n**SPIN**\n\n* CLABE (Transferencias): **0585 9700 0153 9341 19**\n* Tarjeta (Pago en OXXO): **4741 7435 0474 0003**\n\n**BANREGIO**\n\n* CLABE (Transferencias): **0585 9700 0153 9341 19**\n* Tarjeta (Pago en OXXO): **4741 7435 0474 0003**\n\n---\n\n# 🇬🇹 Guatemala\nMonto: 460 Q\n**Titular:** CLARA LUZ ORTIZ MEDINA\n**DPI:** 1674555670101\n\n**Banrural**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **4607021689**\n\n**Banco G&T Continental**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **06610269038**\n\n---\n\n# 🇨🇴 Colombia\nMonto: 189 000 COP\n**Titular:** JHON EDWIN FAJARDO CALA\n**C.C.:** 80145567\n\n**Daviplata**\n\n* Celular: **300 5174227**\n\n**Nequi**\n\n* Celular: **300 5174227**\n\n---\n\n# 🇩🇴 República Dominicana\nMonto: 3 540 RD\n**Titular:** Yenny Mota Sandoval\n**Cédula:** 02500347469\n\n**La Nacional**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **1460896451**\n\n**Banreservas**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **9602396433**\n\n---\n\n# 🇭🇳 Honduras\nMonto: 1 615 L\n**Titular:** GERMAN DANIEL HENRIQUEZ\n**DNI:** 1413 1981 00081\n\n**Banco de Occidente**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **211050440096**\n\n**Banpais**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **21-077-004815-3**\n\n**BAC Credomatic**\n\n* Cuenta de Ahorros\n* N.° de Cuenta: **7456-10371**\n\n---\n\n# 🌎 Pagos Internacionales\nMonto: 57 USD\n### Western Union\n\n* Nombre: **David Ezequiel Salcedo Pablo**\n* DNI: **45640718**\n* Celular: **+51 976 020 013**\n* Correo: **[daviex14@gmail.com](mailto:daviex14@gmail.com)**\n* Dirección: **Av. Alameda Perú 1251, Rupa-Rupa, Huánuco, Perú**\n\n### PayPal\n\n* Nombre: **David Salcedo Pablo**\n* Usuario: **@dxsystem**\n* PayPal: **[daviex14@gmail.com](mailto:daviex14@gmail.com)**\n\n### Ligo\n\n* Correo: **[daviex14@hotmail.com](mailto:daviex14@hotmail.com)**\n* Celular: **+51 976 020 013**\n\n### Binance\n\n* ID: **793739625**\n* Correo: **[daviex14@gmail.com](mailto:daviex14@gmail.com)**\n\n# DIAS Y HORARIOS DE LAS CLASES EN VIVO:\nLunes 21, Martes 22, Jueves 24, Viernes 25, Lunes 28 y Martes 29 de Septiembre del 2026; todas las clases quedan grabadas y se suben a la plataforma, los vídeos estarán disponibles en la plataforma 2 años como mínimo.\n⏰ HORARIO:\n🕕 06:00 p.m. 🇲🇽 🇬🇹 🇭🇳 🇸🇻 🇨🇷\n🕖 07:00 p.m. 🇵🇪 🇨🇴 🇪🇨 🇵🇦\n🕗 08:00 p.m. 🇧🇴 🇩🇴 🇻🇪 🇨🇱\n🕘 09:00 p.m. 🇵🇾 🇦🇷 🇺🇾\n\n# TEMARIO DEL CURSO:\nhttps://iral.ink/TemarioGeminiOracle\n1. Obtén tu Servidor Oracle Permanente (Clase 1 - Grabada)\n2. Prepara tu Servidor para Crear y Publicar Apps (Clase 2 - Grabada)\n3. De GitHub a Internet: Publica tu Primera App (Lunes 21 de Septiembre)\n4. Crea tu Asistente de WhatsApp con Gemini (Martes 22 de Septiembre)\n5. Dale Memoria a tu Asistente (Jueves 24 de Septiembre)\n6. Automatiza Citas, Horarios y Clases (Viernes 25 de Septiembre)\n7. Gestiona Pagos y tu Negocio con IA (Lunes 28 de Septiembre)\n8. Construye el Panel Inteligente y Conecta Todo (Martes 29 de Septiembre)\n\n#BONOS DEL CURSO:\nWhatyBot DxS (Plan Platino 2 Meses), Templates Excel PRO (+1400 Plantillas), Canva Pro EDU, Office 365 Permanente (Mac, Windows, iOS, Android) DriveDownloader, VideoDescargas (4K Sin Marca de Agua), Gemini Pro (18 Meses con 5TB y Google Flow), Cómo Obtener Servidor Oracle Permanente (Masterclass), AppCreatorSuite, ScreenPaint Pro, InstallWin v3.2.2, Pack Técnico PC (Live CDs & Reparación), Plataforma de Academia (Código Fuente), BannerPro con IA, CertiGen Pro, ContractGen AI, DocuPrint Pro, Sistema de Gamificación (Código Fuente), InstallWin Online Cloud, iral.ink (Acortador & Páginas Puente), LiveQuiz Pro (Tiempo Real), MiMail Premium, POS Multi-Sucursal (Código Fuente)\n\n#BONOS A LOS PRIMEROS:\nElegir Licencias Premium 2 Meses adicionales\n\n#GRABACIÓN DE LOS TALLERES GRATUITOS:\nDía 1: https://iral.ink/TallerDia1GeminiOracle\nDía 2:\nhttps://iral.ink/TallerDia2GeminiOracle",
+      "tags": [],
+      "category": "General",
+      "isActive": true,
+      "id": "kb-1790042677581-d33b",
+      "updatedAt": "2026-09-22T02:04:37.581Z"
+    }
+  ],
+  "mediaCatalog": [],
+  "campaigns": []
+}

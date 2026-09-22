@@ -1,0 +1,21 @@
+# Node dependencies
+node_modules/
+
+# Production builds
+dist/
+dist-server/
+
+# Environment secrets and private configuration
+.env
+.env*.local
+*.log
+
+# WhatsApp session data & keys (CRITICAL: Never commit WhatsApp credentials)
+data/auth_info_baileys/
+data/uploads/
+
+# OS and Editor temporary files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
