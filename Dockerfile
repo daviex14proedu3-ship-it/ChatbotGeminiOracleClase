@@ -3,11 +3,14 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm globally
-RUN npm install -g pnpm
+# Set CI environment
+ENV CI=true
 
-# Copy package descriptors
-COPY package.json pnpm-lock.yaml ./
+# Install pnpm 9 matching the lockfile version
+RUN npm install -g pnpm@9
+
+# Copy package descriptors and config
+COPY package.json pnpm-lock.yaml .npmrc* ./
 
 # Install all dependencies (including devDependencies required for vite build & tsc)
 RUN pnpm install --frozen-lockfile
@@ -25,15 +28,16 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# Install pnpm globally
-RUN npm install -g pnpm
-
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV CI=true
 
-# Copy package descriptors
-COPY package.json pnpm-lock.yaml ./
+# Install pnpm 9
+RUN npm install -g pnpm@9
+
+# Copy package descriptors and config
+COPY package.json pnpm-lock.yaml .npmrc* ./
 
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
