@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { storage } from '../storage/store.js';
 import { eventBus } from '../utils/logger.js';
+import { requireAuth } from '../utils/auth.js';
 
 export const mediaRouter = Router();
 
@@ -24,7 +25,7 @@ const upload = multer({
 });
 
 // Upload media file (Frontend sends WebP image)
-mediaRouter.post('/upload', upload.single('file'), (req, res) => {
+mediaRouter.post('/upload', requireAuth, upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se recibió ningún archivo.' });
@@ -73,11 +74,11 @@ mediaRouter.post('/upload', upload.single('file'), (req, res) => {
   }
 });
 
-mediaRouter.get('/catalog', (req, res) => {
+mediaRouter.get('/catalog', requireAuth, (req, res) => {
   res.json(storage.getMediaCatalog());
 });
 
-mediaRouter.delete('/catalog/:id', (req, res) => {
+mediaRouter.delete('/catalog/:id', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
     const deleted = storage.deleteMediaItem(id);

@@ -10,8 +10,10 @@ import {
   Wifi,
   WifiOff,
   RefreshCw,
+  LogOut,
+  User,
 } from 'lucide-react';
-import { WhatsAppStatus } from '../../types';
+import { WhatsAppStatus, AuthUser } from '../../types';
 
 export type NavTab =
   | 'dashboard'
@@ -26,14 +28,18 @@ interface DesktopSidebarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   status: WhatsAppStatus;
+  user?: AuthUser | null;
   onReconnect: () => void;
+  onLogout?: () => void;
 }
 
 export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   currentTab,
   onSelectTab,
   status,
+  user,
   onReconnect,
+  onLogout,
 }) => {
   const navItems = [
     { id: 'dashboard' as NavTab, label: 'Panel & Conexión', icon: LayoutDashboard },
@@ -150,6 +156,33 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
           </span>
         </div>
       </div>
+
+      {/* User Session & Logout Card */}
+      {user && (
+        <div className="p-3 mx-3 mb-3 rounded-2xl bg-slate-900/60 border border-slate-800/60 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-emerald-400 flex-shrink-0">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Admin</p>
+              <p className="text-xs text-slate-200 font-medium truncate" title={user.email}>
+                {user.email}
+              </p>
+            </div>
+          </div>
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title="Cerrar Sesión"
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition flex-shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
     </aside>
   );
 };

@@ -9,6 +9,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+import { authRouter } from './routes/authRoutes.js';
+import { requireAuth, verifyWsToken, getAdminEmail } from './utils/auth.js';
 import { whatsappRouter } from './routes/whatsappRoutes.js';
 import { groupRouter } from './routes/groupRoutes.js';
 import { messageRouter } from './routes/messageRoutes.js';
@@ -25,12 +27,31 @@ const rootDir = path.resolve(__dirname, '..');
 const app = express();
 const server = http.createServer(app);
 
-// Setup WebSocket Server on the same HTTP server instance
+// Setup WebSocket Server on the same HTTP server instance with token verification
 const wss = new WebSocketServer({ server });
 eventBus.setWss(wss);
 
-wss.on('connection', (ws) => {
-  // Send initial WhatsApp status and recent logs to newly connected client
+wss.on('connection', (ws, req) => {
+  // Verify token from query params: ?token=...
+  let token: string | undefined;
+  try {
+    const parsedUrl = new URL(req.url || '', 'http://localhost');
+    token = parsedUrl.searchParams.get('token') || undefined;
+  } catch (e) {
+    // ignore
+  }
+
+  if (!verifyWsToken(token)) {
+    ws.send(JSON.stringify({
+      type: 'auth_error',
+      payload: { message: 'Token de autenticación no válido o ausente.' },
+      timestamp: new Date().toISOString(),
+    }));
+    ws.close(1008, 'Unauthorized');
+    return;
+  }
+
+  // Send initial WhatsApp status and recent logs to authorized connected client
   ws.send(JSON.stringify({
     type: 'whatsapp_status',
     payload: baileysManager.getStatus(),
@@ -60,13 +81,16 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// API Routes
-app.use('/api/whatsapp', whatsappRouter);
-app.use('/api/groups', groupRouter);
-app.use('/api/messages', messageRouter);
-app.use('/api/ai', aiRouter);
+// Auth Route (Public)
+app.use('/api/auth', authRouter);
+
+// Protected API Routes (Requires valid session token)
+app.use('/api/whatsapp', requireAuth, whatsappRouter);
+app.use('/api/groups', requireAuth, groupRouter);
+app.use('/api/messages', requireAuth, messageRouter);
+app.use('/api/ai', requireAuth, aiRouter);
 app.use('/api/media', mediaRouter);
-app.use('/api/logs', logRouter);
+app.use('/api/logs', requireAuth, logRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -133,6 +157,7 @@ setupFrontend().then(() => {
     console.log(`🌟 OmniBot WhatsApp SaaS (Monolito en 1 Solo Puerto) activo!`);
     console.log(`🌐 Acceso Web:   http://localhost:${PORT}`);
     console.log(`📡 WebSocket:    ws://localhost:${PORT}`);
+    console.log(`🔐 Admin User:   ${getAdminEmail()}`);
     console.log(`⚙️  Entorno:      ${process.env.NODE_ENV || 'development'}`);
     console.log(`=============================================================\n`);
 

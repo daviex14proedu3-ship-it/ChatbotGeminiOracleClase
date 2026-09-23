@@ -1,3 +1,5 @@
+import { authStorage } from './api';
+
 type EventCallback = (payload: any) => void;
 
 class SocketClient {
@@ -7,17 +9,25 @@ class SocketClient {
   private isConnected = false;
 
   constructor() {
-    this.connect();
+    // Only connect automatically if there is an active session token
+    if (authStorage.getToken()) {
+      this.connect();
+    }
   }
 
   public connect(): void {
+    const token = authStorage.getToken();
+    if (!token) {
+      return;
+    }
+
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const url = `${protocol}//${host}`;
+    const url = `${protocol}//${host}?token=${encodeURIComponent(token)}`;
 
     try {
       this.ws = new WebSocket(url);
@@ -34,6 +44,11 @@ class SocketClient {
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          if (data.type === 'auth_error') {
+            this.disconnect();
+            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+            return;
+          }
           if (data.type) {
             this.emit(data.type, data.payload);
           }
@@ -45,15 +60,34 @@ class SocketClient {
       this.ws.onclose = () => {
         this.isConnected = false;
         this.emit('connection_change', { connected: false });
-        this.scheduleReconnect();
+        if (authStorage.getToken()) {
+          this.scheduleReconnect();
+        }
       };
 
       this.ws.onerror = () => {
         this.isConnected = false;
       };
     } catch (err) {
-      this.scheduleReconnect();
+      if (authStorage.getToken()) {
+        this.scheduleReconnect();
+      }
     }
+  }
+
+  public disconnect(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.ws) {
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      this.ws.close();
+      this.ws = null;
+    }
+    this.isConnected = false;
+    this.emit('connection_change', { connected: false });
   }
 
   private scheduleReconnect(): void {

@@ -1,13 +1,15 @@
 import React from 'react';
-import { Bot, Power, Sparkles, AlertCircle } from 'lucide-react';
-import { WhatsAppStatus, AppSettings } from '../../types';
+import { Bot, Power, Sparkles, AlertCircle, LogOut, User } from 'lucide-react';
+import { WhatsAppStatus, AppSettings, AuthUser } from '../../types';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
   status: WhatsAppStatus;
   settings?: AppSettings;
+  user?: AuthUser | null;
   onToggleBot?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,7 +17,9 @@ export const Header: React.FC<HeaderProps> = ({
   subtitle,
   status,
   settings,
+  user,
   onToggleBot,
+  onLogout,
 }) => {
   const isConnected = status.state === 'connected';
   const botEnabled = settings?.botEnabled ?? true;
@@ -97,6 +101,29 @@ export const Header: React.FC<HeaderProps> = ({
               : 'Desconectado'}
           </span>
         </div>
+
+        {/* User Profile & Logout Button */}
+        {user && (
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
+              <User className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-medium max-w-[140px] truncate" title={user.email}>
+                {user.email}
+              </span>
+            </div>
+
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                title="Cerrar Sesión"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold transition active:scale-95"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

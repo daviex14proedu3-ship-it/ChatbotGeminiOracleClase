@@ -9,13 +9,19 @@ import { AiSettingsView } from './components/ai/AiSettingsView';
 import { MediaCatalogView } from './components/media/MediaCatalogView';
 import { ChatSimulator } from './components/simulator/ChatSimulator';
 import { LiveLogsView } from './components/logs/LiveLogsView';
-import { WhatsAppStatus, AppSettings } from './types';
+import { LoginPage } from './components/auth/LoginPage';
+import { WhatsAppStatus, AppSettings, AuthUser } from './types';
 import { api } from './services/api';
 import { socket } from './services/socket';
 import { useToast } from './context/ToastContext';
+import { Loader2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const toast = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
   const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [status, setStatus] = useState<WhatsAppStatus>({
     state: 'disconnected',
@@ -47,10 +53,47 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Check auth session on startup
   useEffect(() => {
-    loadInitialData();
+    const checkAuth = async () => {
+      try {
+        const authResult = await api.verifyAuth();
+        if (authResult.authenticated && authResult.user) {
+          setIsAuthenticated(true);
+          setCurrentUser(authResult.user);
+          socket.connect();
+          loadInitialData();
+        } else {
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
 
-    // Listen to real-time WebSocket events
+    checkAuth();
+
+    // Listen for unauthorized events (e.g. 401 response or token expiration)
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      socket.disconnect();
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, [loadInitialData]);
+
+  // WebSocket listeners when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
     const unsubStatus = socket.on('whatsapp_status', (newStatus: WhatsAppStatus) => {
       setStatus(newStatus);
     });
@@ -68,7 +111,30 @@ export const App: React.FC = () => {
       unsubStatus();
       unsubQr();
     };
-  }, [loadInitialData]);
+  }, [isAuthenticated]);
+
+  // Handle successful login
+  const handleLoginSuccess = (user: AuthUser) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    socket.connect();
+    loadInitialData();
+    toast.success(`¡Bienvenido! Sesión iniciada como ${user.email}`);
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } catch (err) {
+      // ignore
+    } finally {
+      socket.disconnect();
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      toast.info('Sesión cerrada correctamente');
+    }
+  };
 
   // Handle bot auto-responder toggle
   const handleToggleBot = async () => {
@@ -114,6 +180,24 @@ export const App: React.FC = () => {
     },
   };
 
+  // 1. Initial Auth Loading Screen
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
+        <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-4">
+          <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+        </div>
+        <p className="text-sm font-medium">Verificando sesión segura...</p>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated State: Show LoginPage
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // 3. Authenticated State: Show App Monolith
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
       {/* Desktop Fixed Sidebar (h-screen full height) */}
@@ -121,6 +205,8 @@ export const App: React.FC = () => {
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         status={status}
+        user={currentUser}
+        onLogout={handleLogout}
         onReconnect={() => {
           api.reconnectWhatsApp().catch(console.error);
           toast.info('Solicitando reconexión a WhatsApp...');
@@ -135,6 +221,8 @@ export const App: React.FC = () => {
           subtitle={titles[currentTab].subtitle}
           status={status}
           settings={settings || undefined}
+          user={currentUser}
+          onLogout={handleLogout}
           onToggleBot={handleToggleBot}
         />
 
