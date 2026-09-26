@@ -17,6 +17,8 @@ import { messageRouter } from './routes/messageRoutes.js';
 import { aiRouter } from './routes/aiRoutes.js';
 import { mediaRouter } from './routes/mediaRoutes.js';
 import { logRouter } from './routes/logRoutes.js';
+import { memoryRouter } from './routes/memoryRoutes.js';
+import { databaseService } from './storage/databaseService.js';
 import { eventBus } from './utils/logger.js';
 import { baileysManager } from './whatsapp/baileysClient.js';
 
@@ -91,6 +93,7 @@ app.use('/api/messages', requireAuth, messageRouter);
 app.use('/api/ai', requireAuth, aiRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/logs', requireAuth, logRouter);
+app.use('/api/memory', requireAuth, memoryRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -162,6 +165,11 @@ setupFrontend().then(() => {
     console.log(`=============================================================\n`);
 
     eventBus.log('info', 'system', `Servidor iniciado en el puerto ${PORT}`);
+
+    // Initialize Database & Memory Service (PostgreSQL Oracle + Supabase Fallback)
+    databaseService.initialize().catch(err => {
+      console.error('Error initializing Database & Memory Service:', err);
+    });
 
     // Automatically initialize WhatsApp Baileys connection
     baileysManager.initialize().catch(err => {

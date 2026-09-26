@@ -8,6 +8,7 @@ import { DirectAndBulkMessaging } from './components/messaging/DirectAndBulkMess
 import { AiSettingsView } from './components/ai/AiSettingsView';
 import { MediaCatalogView } from './components/media/MediaCatalogView';
 import { ChatSimulator } from './components/simulator/ChatSimulator';
+import { MemoryView } from './components/memory/MemoryView';
 import { LiveLogsView } from './components/logs/LiveLogsView';
 import { LoginPage } from './components/auth/LoginPage';
 import { WhatsAppStatus, AppSettings, AuthUser } from './types';
@@ -166,6 +167,10 @@ export const App: React.FC = () => {
       title: 'Inteligencia Artificial & Base de Conocimientos',
       subtitle: 'Pool de claves de Google AI Studio con failover automático y documentos de soporte.',
     },
+    memory: {
+      title: 'Memoria Conversacional & Base de Datos',
+      subtitle: 'PostgreSQL en Servidor Oracle con Failover automático a Supabase y respaldo local.',
+    },
     media_catalog: {
       title: 'Catálogo de Medios & Optimizador WebP',
       subtitle: 'Conversión ultraligera en navegador e imágenes disponibles para despacho de la IA.',
@@ -250,6 +255,8 @@ export const App: React.FC = () => {
               onUpdateSettings={(newSettings) => setSettings(newSettings)}
             />
           )}
+
+          {currentTab === 'memory' && <MemoryView />}
 
           {currentTab === 'media_catalog' && <MediaCatalogView />}
 

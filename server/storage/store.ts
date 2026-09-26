@@ -56,6 +56,12 @@ export interface AppDatabase {
     respondToGroups: boolean;
     antiBanDelayMin: number;
     antiBanDelayMax: number;
+    memoryEnabled: boolean;
+    memoryLimitTurns: number;
+    postgresUrl: string;
+    supabaseUrl: string;
+    supabaseKey: string;
+    supabaseDbUrl: string;
   };
   knowledgeBase: KnowledgeItem[];
   mediaCatalog: MediaCatalogItem[];
@@ -94,6 +100,12 @@ Nunca inventes información que no esté en la base de conocimientos. Si no cono
     respondToGroups: false,
     antiBanDelayMin: 4,
     antiBanDelayMax: 8,
+    memoryEnabled: process.env.BOT_MEMORY_ENABLED !== 'false',
+    memoryLimitTurns: parseInt(process.env.BOT_MEMORY_TURNS || '10', 10),
+    postgresUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL || '',
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    supabaseKey: process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    supabaseDbUrl: process.env.SUPABASE_DB_URL || '',
   },
   knowledgeBase: [
     {

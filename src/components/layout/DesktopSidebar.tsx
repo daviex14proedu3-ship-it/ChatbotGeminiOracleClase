@@ -12,6 +12,7 @@ import {
   RefreshCw,
   LogOut,
   User,
+  Database,
 } from 'lucide-react';
 import { WhatsAppStatus, AuthUser } from '../../types';
 
@@ -20,6 +21,7 @@ export type NavTab =
   | 'groups'
   | 'messaging'
   | 'ai_settings'
+  | 'memory'
   | 'media_catalog'
   | 'simulator'
   | 'logs';
@@ -46,6 +48,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     { id: 'groups' as NavTab, label: 'Grupos WhatsApp', icon: Users, badge: 'Filtros' },
     { id: 'messaging' as NavTab, label: 'Envíos & Excel', icon: Send, badge: 'Smart' },
     { id: 'ai_settings' as NavTab, label: 'IA & Base Conocimiento', icon: Sparkles },
+    { id: 'memory' as NavTab, label: 'Memoria & Base de Datos', icon: Database, badge: 'Oracle/Supa' },
     { id: 'media_catalog' as NavTab, label: 'Catálogo & WebP', icon: ImageIcon },
     { id: 'simulator' as NavTab, label: 'Simulador Chat IA', icon: MessageSquare },
     { id: 'logs' as NavTab, label: 'Logs en Vivo', icon: Terminal },

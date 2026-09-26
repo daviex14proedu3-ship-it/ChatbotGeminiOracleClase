@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { storage, GeminiKeyConfig } from '../storage/store.js';
 import { eventBus } from '../utils/logger.js';
 import { buildSystemInstruction } from './promptBuilder.js';
+import { databaseService } from '../storage/databaseService.js';
 
 interface UserConversationTurn {
   role: 'user' | 'model';
@@ -97,7 +98,8 @@ class GeminiFailoverService {
 
   public async generateResponse(
     userPhone: string,
-    incomingMessage: string
+    incomingMessage: string,
+    contactName?: string
   ): Promise<{ text: string; mediaIdToSend?: string }> {
     const settings = storage.getSettings();
     const totalKeys = settings.geminiKeys.length;
@@ -107,6 +109,9 @@ class GeminiFailoverService {
     if (!currentKeyConfig || !currentKeyConfig.key) {
       throw new Error('No hay claves API de Google AI Studio configuradas.');
     }
+
+    const memoryEnabled = settings.memoryEnabled !== false;
+    const maxTurns = settings.memoryLimitTurns || 10;
 
     const systemInstruction = buildSystemInstruction();
     let currentModelName = settings.selectedModel || 'gemini-2.0-flash';
@@ -135,8 +140,18 @@ class GeminiFailoverService {
               systemInstruction: systemInstruction,
             });
 
-            // Retrieve or initialize conversation history
-            let history = this.userHistories.get(userPhone) || [];
+            // Retrieve conversation history from DB or in-memory
+            let history: UserConversationTurn[] = [];
+            if (memoryEnabled) {
+              try {
+                history = await databaseService.getConversationHistoryForGemini(userPhone, maxTurns);
+              } catch (dbErr) {
+                console.warn('Error reading history from databaseService, using in-memory:', dbErr);
+                history = this.userHistories.get(userPhone) || [];
+              }
+            } else {
+              history = this.userHistories.get(userPhone) || [];
+            }
             
             // Start chat with history
             const chat = model.startChat({
@@ -182,17 +197,6 @@ class GeminiFailoverService {
           }
         }
 
-        // Save conversation history
-        let history = this.userHistories.get(userPhone) || [];
-        history.push(
-          { role: 'user', parts: [{ text: incomingMessage }] },
-          { role: 'model', parts: [{ text: responseText }] }
-        );
-        if (history.length > this.MAX_HISTORY_TURNS * 2) {
-          history = history.slice(-this.MAX_HISTORY_TURNS * 2);
-        }
-        this.userHistories.set(userPhone, history);
-
         // Check if response contains [SEND_MEDIA:ID]
         let cleanedText = responseText;
         let mediaIdToSend: string | undefined;
@@ -203,6 +207,31 @@ class GeminiFailoverService {
           cleanedText = responseText.replace(/\[SEND_MEDIA:\s*[^\]]+\]/gi, '').trim();
           eventBus.log('info', 'ai', `IA determinó enviar archivo multimedia ID: "${mediaIdToSend}"`);
         }
+
+        // Save conversation history to Database and local memory cache
+        if (memoryEnabled) {
+          try {
+            await databaseService.saveTurn(
+              userPhone,
+              incomingMessage,
+              cleanedText,
+              contactName,
+              mediaIdToSend
+            );
+          } catch (dbErr) {
+            console.warn('Error saving turn to databaseService:', dbErr);
+          }
+        }
+
+        let history = this.userHistories.get(userPhone) || [];
+        history.push(
+          { role: 'user', parts: [{ text: incomingMessage }] },
+          { role: 'model', parts: [{ text: cleanedText }] }
+        );
+        if (history.length > this.MAX_HISTORY_TURNS * 2) {
+          history = history.slice(-this.MAX_HISTORY_TURNS * 2);
+        }
+        this.userHistories.set(userPhone, history);
 
         eventBus.log('success', 'ai', `Respuesta generada exitosamente para ${userPhone}`);
         return { text: cleanedText, mediaIdToSend };
@@ -382,8 +411,13 @@ class GeminiFailoverService {
     return defaultCurated;
   }
 
-  public clearUserHistory(userPhone: string): void {
+  public async clearUserHistory(userPhone: string): Promise<void> {
     this.userHistories.delete(userPhone);
+    try {
+      await databaseService.clearConversationMemory(userPhone);
+    } catch (e) {
+      console.warn('Error clearing history in databaseService:', e);
+    }
   }
 }
 

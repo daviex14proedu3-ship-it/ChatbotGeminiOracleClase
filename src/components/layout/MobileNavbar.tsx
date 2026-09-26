@@ -7,6 +7,7 @@ import {
   Image as ImageIcon,
   MessageSquare,
   Terminal,
+  Database,
 } from 'lucide-react';
 import { NavTab } from './DesktopSidebar';
 
@@ -21,6 +22,7 @@ export const MobileNavbar: React.FC<MobileNavbarProps> = ({ currentTab, onSelect
     { id: 'groups' as NavTab, label: 'Grupos', icon: Users },
     { id: 'messaging' as NavTab, label: 'Envíos', icon: Send },
     { id: 'ai_settings' as NavTab, label: 'IA & KB', icon: Sparkles },
+    { id: 'memory' as NavTab, label: 'Memoria', icon: Database },
     { id: 'media_catalog' as NavTab, label: 'WebP', icon: ImageIcon },
     { id: 'simulator' as NavTab, label: 'Chat', icon: MessageSquare },
     { id: 'logs' as NavTab, label: 'Logs', icon: Terminal },

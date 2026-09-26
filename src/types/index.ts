@@ -26,6 +26,12 @@ export interface AppSettings {
   respondToGroups: boolean;
   antiBanDelayMin: number;
   antiBanDelayMax: number;
+  memoryEnabled?: boolean;
+  memoryLimitTurns?: number;
+  postgresUrl?: string;
+  supabaseUrl?: string;
+  supabaseKey?: string;
+  supabaseDbUrl?: string;
 }
 
 export interface KnowledgeItem {
@@ -112,5 +118,45 @@ export interface AuthUser {
 export interface AuthState {
   isAuthenticated: boolean;
   user: AuthUser | null;
+}
+
+export interface ProviderDiagnostic {
+  configured: boolean;
+  status: 'connected' | 'error' | 'disconnected' | 'not_configured';
+  latencyMs?: number;
+  hostOrUrl?: string;
+  error?: string;
+  lastChecked?: string;
+  details?: string;
+}
+
+export interface DatabaseHealthStatus {
+  activeProvider: 'postgresql' | 'supabase' | 'local_fallback';
+  memoryEnabled: boolean;
+  maxTurns: number;
+  primary: ProviderDiagnostic;
+  fallback: ProviderDiagnostic;
+  stats: {
+    totalConversations: number;
+    totalMessages: number;
+  };
+}
+
+export interface ConversationRecord {
+  phone: string;
+  contact_name: string;
+  last_message_at: string;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessageRecord {
+  id: string | number;
+  phone: string;
+  role: 'user' | 'model' | 'system';
+  content: string;
+  media_id?: string | null;
+  created_at: string;
 }
 

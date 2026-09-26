@@ -205,8 +205,8 @@ class BaileysManager {
 
       eventBus.log('info', 'whatsapp', `Mensaje recibido de ${pushName} (${senderPhone}): "${text.slice(0, 50)}..."`);
 
-      // Invoke Gemini with Failover
-      const aiResult = await geminiService.generateResponse(senderPhone, text);
+      // Invoke Gemini with Failover and persistent memory
+      const aiResult = await geminiService.generateResponse(senderPhone, text, pushName);
 
       // Send text response if available
       if (aiResult.text) {

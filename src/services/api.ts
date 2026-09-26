@@ -7,6 +7,9 @@ import {
   LogEntry,
   GeminiModelInfo,
   AuthUser,
+  DatabaseHealthStatus,
+  ConversationRecord,
+  ChatMessageRecord,
 } from '../types';
 
 const BASE_URL = '/api';
@@ -328,6 +331,106 @@ export const api = {
 
   async clearLogs(): Promise<any> {
     const res = await authFetch(`${BASE_URL}/logs`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  // Memory & Database (PostgreSQL Oracle + Supabase Fallback)
+  async getDatabaseHealth(): Promise<DatabaseHealthStatus> {
+    const res = await authFetch(`${BASE_URL}/memory/status`);
+    if (!res.ok) throw new Error('Error al obtener estado de base de datos');
+    return res.json();
+  },
+
+  async getMemoryConfig(): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/memory/config`);
+    if (!res.ok) throw new Error('Error al obtener configuración de memoria');
+    return res.json();
+  },
+
+  async saveMemoryConfig(config: {
+    memoryEnabled?: boolean;
+    memoryLimitTurns?: number;
+    postgresUrl?: string;
+    supabaseUrl?: string;
+    supabaseKey?: string;
+    supabaseDbUrl?: string;
+  }): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/memory/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al guardar configuración');
+    }
+    return res.json();
+  },
+
+  async testDatabaseConnection(params: {
+    provider: 'postgresql' | 'supabase';
+    url?: string;
+    key?: string;
+    dbUrl?: string;
+  }): Promise<{ success: boolean; latencyMs: number; message: string }> {
+    const res = await authFetch(`${BASE_URL}/memory/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al probar conexión');
+    }
+    return res.json();
+  },
+
+  async initDatabaseTables(): Promise<{
+    primarySuccess: boolean;
+    primaryMessage?: string;
+    fallbackSuccess: boolean;
+    fallbackMessage?: string;
+  }> {
+    const res = await authFetch(`${BASE_URL}/memory/init-tables`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al inicializar tablas');
+    }
+    return res.json();
+  },
+
+  async getMemoryDdl(): Promise<{ ddl: string }> {
+    const res = await authFetch(`${BASE_URL}/memory/ddl`);
+    return res.json();
+  },
+
+  async getConversations(): Promise<ConversationRecord[]> {
+    const res = await authFetch(`${BASE_URL}/memory/conversations`);
+    if (!res.ok) throw new Error('Error al cargar conversaciones');
+    return res.json();
+  },
+
+  async getConversationMessages(phone: string, limit = 100): Promise<ChatMessageRecord[]> {
+    const res = await authFetch(`${BASE_URL}/memory/conversations/${encodeURIComponent(phone)}/messages?limit=${limit}`);
+    if (!res.ok) throw new Error('Error al cargar mensajes');
+    return res.json();
+  },
+
+  async deleteConversation(phone: string): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/memory/conversations/${encodeURIComponent(phone)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Error al eliminar conversación');
+    return res.json();
+  },
+
+  async clearAllMemory(): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/memory/clear-all`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Error al reiniciar memoria');
     return res.json();
   },
 };
