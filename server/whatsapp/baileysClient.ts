@@ -258,8 +258,8 @@ class BaileysManager {
   }
 
   public async sendMessage(jid: string, content: any): Promise<any> {
-    if (!this.sock) {
-      throw new Error('WhatsApp no está conectado');
+    if (!this.sock || this.connectionState !== 'connected') {
+      throw new Error('WhatsApp no está conectado. Escanee el código QR en la sección WhatsApp para vincular su cuenta.');
     }
 
     // Format destination JID if phone number without domain was passed
