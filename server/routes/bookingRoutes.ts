@@ -81,6 +81,20 @@ bookingRouter.post('/appointments/:id/reminder', async (req: Request, res: Respo
   }
 });
 
+bookingRouter.get('/slots', async (req: Request, res: Response) => {
+  try {
+    const date = req.query.date ? String(req.query.date) : undefined;
+    const serviceId = req.query.serviceId ? Number(req.query.serviceId) : undefined;
+    if (!date) {
+      return res.status(400).json({ error: 'La fecha es requerida (?date=YYYY-MM-DD)' });
+    }
+    const slots = await bookingService.getAvailableSlots(date, serviceId);
+    res.json(slots);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || 'Error al calcular horarios disponibles' });
+  }
+});
+
 bookingRouter.post('/slots', async (req: Request, res: Response) => {
   try {
     const { date, serviceId } = req.body;
@@ -227,6 +241,20 @@ bookingRouter.post('/students/:phone/enroll', async (req: Request, res: Response
       return res.status(400).json({ error: 'courseId es obligatorio' });
     }
     await bookingService.enrollStudent(phone, Number(courseId), studentName);
+    res.json({ success: true, message: 'Alumno matriculado exitosamente' });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Error al matricular alumno' });
+  }
+});
+
+bookingRouter.post('/enrollments', async (req: Request, res: Response) => {
+  try {
+    const { studentPhone, phone, courseId, studentName } = req.body;
+    const targetPhone = studentPhone || phone;
+    if (!targetPhone || !courseId) {
+      return res.status(400).json({ error: 'phone y courseId son obligatorios' });
+    }
+    await bookingService.enrollStudent(targetPhone, Number(courseId), studentName);
     res.json({ success: true, message: 'Alumno matriculado exitosamente' });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Error al matricular alumno' });

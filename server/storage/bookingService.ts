@@ -73,12 +73,14 @@ class BookingService {
    * Helper: executes query on primary PostgreSQL pool or Supabase fallback
    */
   private async query(text: string, params: any[] = []): Promise<any[]> {
+    let lastError: any = null;
     const pgPool = databaseService.getPgPool();
     if (pgPool) {
       try {
         const res = await pgPool.query(text, params);
         return res.rows;
       } catch (err: any) {
+        lastError = err;
         console.warn('BookingService: Primary query failed, attempting Supabase fallback:', err?.message || err);
       }
     }
@@ -90,11 +92,12 @@ class BookingService {
         const res = await supaPool.query(text, params);
         return res.rows;
       } catch (err: any) {
+        lastError = err;
         console.warn('BookingService: Supabase pool query failed:', err?.message || err);
       }
     }
 
-    throw new Error('No hay bases de datos disponibles para ejecutar la consulta.');
+    throw lastError || new Error('No hay bases de datos disponibles para ejecutar la consulta.');
   }
 
   // ============================================================================
@@ -621,8 +624,16 @@ class BookingService {
     return students;
   }
 
-  public async createOrUpdateStudent(data: { phone: string; full_name: string; email?: string; notes?: string }): Promise<Student> {
+  public async createOrUpdateStudent(data: {
+    phone: string;
+    full_name?: string;
+    fullName?: string;
+    name?: string;
+    email?: string;
+    notes?: string;
+  }): Promise<Student> {
     const cleanPhone = data.phone.replace(/[^0-9]/g, '');
+    const fullName = data.full_name || data.fullName || data.name || `Alumno ${cleanPhone.slice(-4)}`;
     const rows = await this.query(`
       INSERT INTO public.students (phone, full_name, email, notes, status)
       VALUES ($1, $2, $3, $4, 'active')
@@ -631,7 +642,7 @@ class BookingService {
           email = COALESCE(NULLIF(EXCLUDED.email, ''), public.students.email),
           updated_at = NOW()
       RETURNING *;
-    `, [cleanPhone, data.full_name, data.email || '', data.notes || '']);
+    `, [cleanPhone, fullName, data.email || '', data.notes || '']);
     return rows[0];
   }
 
