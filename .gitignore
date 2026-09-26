@@ -19,3 +19,7 @@ data/uploads/
 Thumbs.db
 .vscode/
 .idea/
+
+# Supabase CLI temporary files
+supabase/.temp/
+supabase/.branches/
