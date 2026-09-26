@@ -433,4 +433,201 @@ export const api = {
     if (!res.ok) throw new Error('Error al reiniciar memoria');
     return res.json();
   },
+
+  // ============================================================================
+  // CITAS, HORARIOS, CURSOS & ALUMNOS
+  // ============================================================================
+  async getBookingStats(): Promise<BookingStats> {
+    const res = await authFetch(`${BASE_URL}/bookings/stats`);
+    if (!res.ok) throw new Error('Error al cargar métricas de citas');
+    return res.json();
+  },
+
+  async getAppointments(filters?: { date?: string; status?: string; search?: string }): Promise<AppointmentRecord[]> {
+    const params = new URLSearchParams();
+    if (filters?.date) params.append('date', filters.date);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.search) params.append('search', filters.search);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await authFetch(`${BASE_URL}/bookings/appointments${query}`);
+    if (!res.ok) throw new Error('Error al cargar citas');
+    return res.json();
+  },
+
+  async createAppointment(data: {
+    phone: string;
+    clientName: string;
+    date: string;
+    time: string;
+    serviceName?: string;
+    serviceId?: number;
+    notes?: string;
+  }): Promise<AppointmentRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al crear cita');
+    }
+    return res.json();
+  },
+
+  async updateAppointmentStatus(id: number, status: string): Promise<AppointmentRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/appointments/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error('Error al actualizar estado');
+    return res.json();
+  },
+
+  async sendAppointmentReminder(id: number): Promise<{ success: boolean; message: string }> {
+    const res = await authFetch(`${BASE_URL}/bookings/appointments/${id}/reminder`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error('Error al enviar recordatorio');
+    return res.json();
+  },
+
+  async getAvailableSlots(date: string, serviceId?: number): Promise<{
+    date: string;
+    dayName: string;
+    isOpen: boolean;
+    availableSlots: string[];
+    slotDurationMinutes: number;
+    reason?: string;
+  }> {
+    const res = await authFetch(`${BASE_URL}/bookings/slots`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, serviceId }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al obtener horarios');
+    }
+    return res.json();
+  },
+
+  async getScheduleRules(): Promise<ScheduleRuleRecord[]> {
+    const res = await authFetch(`${BASE_URL}/bookings/schedule`);
+    if (!res.ok) throw new Error('Error al cargar reglas de horarios');
+    return res.json();
+  },
+
+  async updateScheduleRule(id: number, data: Partial<ScheduleRuleRecord>): Promise<ScheduleRuleRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/schedule/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al actualizar regla');
+    return res.json();
+  },
+
+  async getBookingServices(): Promise<BookingServiceRecord[]> {
+    const res = await authFetch(`${BASE_URL}/bookings/services`);
+    if (!res.ok) throw new Error('Error al cargar servicios');
+    return res.json();
+  },
+
+  async createBookingService(data: Partial<BookingServiceRecord>): Promise<BookingServiceRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/services`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al crear servicio');
+    return res.json();
+  },
+
+  async updateBookingService(id: number, data: Partial<BookingServiceRecord>): Promise<BookingServiceRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/services/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al actualizar servicio');
+    return res.json();
+  },
+
+  async deleteBookingService(id: number): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/bookings/services/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Error al eliminar servicio');
+    return res.json();
+  },
+
+  async getCourses(): Promise<CourseRecord[]> {
+    const res = await authFetch(`${BASE_URL}/bookings/courses`);
+    if (!res.ok) throw new Error('Error al cargar cursos');
+    return res.json();
+  },
+
+  async createCourse(data: Partial<CourseRecord>): Promise<CourseRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/courses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al crear curso');
+    return res.json();
+  },
+
+  async updateCourse(id: number, data: Partial<CourseRecord>): Promise<CourseRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/courses/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al actualizar curso');
+    return res.json();
+  },
+
+  async deleteCourse(id: number): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/bookings/courses/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Error al eliminar curso');
+    return res.json();
+  },
+
+  async getStudents(): Promise<StudentRecord[]> {
+    const res = await authFetch(`${BASE_URL}/bookings/students`);
+    if (!res.ok) throw new Error('Error al cargar alumnos');
+    return res.json();
+  },
+
+  async createStudent(data: { phone: string; full_name: string; email?: string; notes?: string }): Promise<StudentRecord> {
+    const res = await authFetch(`${BASE_URL}/bookings/students`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al guardar alumno');
+    return res.json();
+  },
+
+  async enrollStudent(phone: string, courseId: number, studentName?: string): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/bookings/students/${encodeURIComponent(phone)}/enroll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId, studentName }),
+    });
+    if (!res.ok) throw new Error('Error al matricular alumno');
+    return res.json();
+  },
+
+  async unenrollStudent(phone: string, courseId: number): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/bookings/students/${encodeURIComponent(phone)}/courses/${courseId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Error al desmatricular');
+    return res.json();
+  },
 };

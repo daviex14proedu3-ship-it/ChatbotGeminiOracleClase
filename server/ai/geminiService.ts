@@ -3,6 +3,7 @@ import { storage, GeminiKeyConfig } from '../storage/store.js';
 import { eventBus } from '../utils/logger.js';
 import { buildSystemInstruction } from './promptBuilder.js';
 import { databaseService } from '../storage/databaseService.js';
+import { bookingFunctionDeclarations, executeBookingTool } from './geminiTools.js';
 
 interface UserConversationTurn {
   role: 'user' | 'model';
@@ -138,6 +139,7 @@ class GeminiFailoverService {
             const model = genAI.getGenerativeModel({
               model: candidate,
               systemInstruction: systemInstruction,
+              tools: [{ functionDeclarations: bookingFunctionDeclarations }],
             });
 
             // Retrieve conversation history from DB or in-memory
@@ -162,8 +164,36 @@ class GeminiFailoverService {
             });
 
             eventBus.log('info', 'ai', `Enviando prompt a ${candidate} con clave "${currentKeyConfig.name}"...`);
-            const result = await chat.sendMessage(incomingMessage);
-            responseText = result.response.text();
+            let chatResult = await chat.sendMessage(incomingMessage);
+            let response = chatResult.response;
+
+            // Handle Function Calls (Tools) Loop
+            let toolTurns = 0;
+            while (toolTurns < 5) {
+              const calls = response.functionCalls();
+              if (!calls || calls.length === 0) {
+                break;
+              }
+              toolTurns++;
+              const functionResponses: any[] = [];
+              for (const call of calls) {
+                const toolOutput = await executeBookingTool(call.name, call.args, {
+                  phone: userPhone,
+                  contactName,
+                });
+                functionResponses.push({
+                  functionResponse: {
+                    name: call.name,
+                    response: toolOutput,
+                  },
+                });
+              }
+
+              chatResult = await chat.sendMessage(functionResponses);
+              response = chatResult.response;
+            }
+
+            responseText = response.text();
             currentModelName = candidate;
             break;
           } catch (modelErr: any) {

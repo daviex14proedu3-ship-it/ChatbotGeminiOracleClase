@@ -82,6 +82,18 @@ export class DatabaseService {
     this.loadLocalFallback();
   }
 
+  public getPgPool(): pg.Pool | null {
+    return this.pgPool;
+  }
+
+  public getSupabasePool(): pg.Pool | null {
+    return this.supabasePool;
+  }
+
+  public getSupabaseClient(): SupabaseClient | null {
+    return this.supabaseClient;
+  }
+
   /**
    * Load local backup file into memory
    */

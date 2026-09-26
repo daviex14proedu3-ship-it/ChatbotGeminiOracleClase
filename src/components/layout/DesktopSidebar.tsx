@@ -13,11 +13,13 @@ import {
   LogOut,
   User,
   Database,
+  Calendar,
 } from 'lucide-react';
 import { WhatsAppStatus, AuthUser } from '../../types';
 
 export type NavTab =
   | 'dashboard'
+  | 'bookings'
   | 'groups'
   | 'messaging'
   | 'ai_settings'
@@ -45,6 +47,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 }) => {
   const navItems = [
     { id: 'dashboard' as NavTab, label: 'Panel & Conexión', icon: LayoutDashboard },
+    { id: 'bookings' as NavTab, label: 'Agenda & Clases', icon: Calendar, badge: 'IA Gemini' },
     { id: 'groups' as NavTab, label: 'Grupos WhatsApp', icon: Users, badge: 'Filtros' },
     { id: 'messaging' as NavTab, label: 'Envíos & Excel', icon: Send, badge: 'Smart' },
     { id: 'ai_settings' as NavTab, label: 'IA & Base Conocimiento', icon: Sparkles },

@@ -18,6 +18,8 @@ import { aiRouter } from './routes/aiRoutes.js';
 import { mediaRouter } from './routes/mediaRoutes.js';
 import { logRouter } from './routes/logRoutes.js';
 import { memoryRouter } from './routes/memoryRoutes.js';
+import { bookingRouter } from './routes/bookingRoutes.js';
+import { reminderService } from './services/reminderService.js';
 import { databaseService } from './storage/databaseService.js';
 import { eventBus } from './utils/logger.js';
 import { baileysManager } from './whatsapp/baileysClient.js';
@@ -94,6 +96,7 @@ app.use('/api/ai', requireAuth, aiRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/logs', requireAuth, logRouter);
 app.use('/api/memory', requireAuth, memoryRouter);
+app.use('/api/bookings', requireAuth, bookingRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -167,7 +170,10 @@ setupFrontend().then(() => {
     eventBus.log('info', 'system', `Servidor iniciado en el puerto ${PORT}`);
 
     // Initialize Database & Memory Service (PostgreSQL Oracle + Supabase Fallback)
-    databaseService.initialize().catch(err => {
+    databaseService.initialize().then(() => {
+      // Start automated appointment reminders background task
+      reminderService.start();
+    }).catch(err => {
       console.error('Error initializing Database & Memory Service:', err);
     });
 

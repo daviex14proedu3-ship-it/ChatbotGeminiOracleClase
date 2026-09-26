@@ -9,6 +9,7 @@ import { AiSettingsView } from './components/ai/AiSettingsView';
 import { MediaCatalogView } from './components/media/MediaCatalogView';
 import { ChatSimulator } from './components/simulator/ChatSimulator';
 import { MemoryView } from './components/memory/MemoryView';
+import { BookingsView } from './components/bookings/BookingsView';
 import { LiveLogsView } from './components/logs/LiveLogsView';
 import { LoginPage } from './components/auth/LoginPage';
 import { WhatsAppStatus, AppSettings, AuthUser } from './types';
@@ -155,6 +156,10 @@ export const App: React.FC = () => {
       title: 'Panel General & Estado de WhatsApp',
       subtitle: 'Monitorea la conexión, escanea el código QR y accede a los módulos principales.',
     },
+    bookings: {
+      title: 'Agenda de Citas, Horarios y Clases',
+      subtitle: 'Disponibilidad dinámica con Gemini, reservas automáticas, cursos y recordatorios por WhatsApp.',
+    },
     groups: {
       title: 'Extracción & Envío a Grupos de WhatsApp',
       subtitle: 'Filtra grupos donde puedes escribir o eres admin, y envía mensajes masivos.',
@@ -244,6 +249,8 @@ export const App: React.FC = () => {
               mediaCount={mediaCount}
             />
           )}
+
+          {currentTab === 'bookings' && <BookingsView />}
 
           {currentTab === 'groups' && <GroupList status={status} />}
 

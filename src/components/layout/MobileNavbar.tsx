@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Terminal,
   Database,
+  Calendar,
 } from 'lucide-react';
 import { NavTab } from './DesktopSidebar';
 
@@ -19,6 +20,7 @@ interface MobileNavbarProps {
 export const MobileNavbar: React.FC<MobileNavbarProps> = ({ currentTab, onSelectTab }) => {
   const items = [
     { id: 'dashboard' as NavTab, label: 'Panel', icon: LayoutDashboard },
+    { id: 'bookings' as NavTab, label: 'Agenda', icon: Calendar },
     { id: 'groups' as NavTab, label: 'Grupos', icon: Users },
     { id: 'messaging' as NavTab, label: 'Envíos', icon: Send },
     { id: 'ai_settings' as NavTab, label: 'IA & KB', icon: Sparkles },

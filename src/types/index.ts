@@ -160,3 +160,77 @@ export interface ChatMessageRecord {
   created_at: string;
 }
 
+export interface AppointmentRecord {
+  id: number;
+  booking_code: string;
+  phone: string;
+  client_name: string;
+  service_id: number | null;
+  service_name: string;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  status: 'confirmed' | 'pending' | 'cancelled' | 'completed';
+  notes: string;
+  reminder_sent: boolean;
+  reminder_sent_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduleRuleRecord {
+  id: number;
+  day_of_week: number;
+  day_name: string;
+  is_active: boolean;
+  start_time: string;
+  end_time: string;
+  break_start: string | null;
+  break_end: string | null;
+  slot_duration_minutes: number;
+  max_parallel_slots: number;
+}
+
+export interface BookingServiceRecord {
+  id: number;
+  name: string;
+  duration_minutes: number;
+  price: number;
+  description: string;
+  is_active: boolean;
+}
+
+export interface CourseRecord {
+  id: number;
+  code: string;
+  title: string;
+  description: string;
+  instructor: string;
+  schedule_days: string;
+  start_time: string;
+  end_time: string;
+  location_or_link: string;
+  max_capacity: number;
+  enrolled_count?: number;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface StudentRecord {
+  id: number;
+  phone: string;
+  full_name: string;
+  email: string;
+  status: 'active' | 'inactive';
+  notes: string;
+  created_at?: string;
+  courses?: CourseRecord[];
+}
+
+export interface BookingStats {
+  todayAppointments: number;
+  upcomingAppointments: number;
+  activeStudents: number;
+  activeCourses: number;
+}
+
