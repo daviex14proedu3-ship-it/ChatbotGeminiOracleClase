@@ -96,7 +96,7 @@ Hola *${item.client_name}*, te recordamos que tienes una cita confirmada en nues
 
   public async sendManualReminder(appointmentId: number): Promise<{ success: boolean; message: string }> {
     const list = await bookingService.getAppointmentsList({ limit: 1000 });
-    const appointment = list.find(a => a.id === appointmentId);
+    const appointment = list.find(a => String(a.id) === String(appointmentId));
     if (!appointment) {
       throw new Error('Cita no encontrada.');
     }
