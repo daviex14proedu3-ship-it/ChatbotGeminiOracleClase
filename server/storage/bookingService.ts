@@ -521,6 +521,17 @@ class BookingService {
     `, params);
   }
 
+  public async getAppointmentById(id: number | string): Promise<Appointment | null> {
+    const rows = await this.query(`
+      SELECT id, booking_code, phone, client_name, service_id, service_name,
+             appointment_date::text, start_time::text, end_time::text,
+             status, notes, reminder_sent, created_at::text, updated_at::text
+      FROM public.appointments
+      WHERE id = $1;
+    `, [id]);
+    return rows[0] || null;
+  }
+
   public async updateAppointmentStatus(id: number, status: string): Promise<Appointment> {
     const rows = await this.query(`
       UPDATE public.appointments
