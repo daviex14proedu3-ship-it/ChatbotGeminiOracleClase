@@ -116,13 +116,13 @@ class GeminiFailoverService {
 
     const systemInstruction = buildSystemInstruction();
     let currentModelName = settings.selectedModel || 'gemini-2.0-flash';
-    const fallbackModels = [
+    const fallbackModels = Array.from(new Set([
       currentModelName,
-      'gemini-2.5-flash',
-      'gemini-2.0-flash-lite',
       'gemini-2.0-flash',
       'gemini-1.5-flash',
-    ];
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
+    ]));
 
     while (attempts < Math.max(1, totalKeys)) {
       attempts++;
@@ -199,13 +199,17 @@ class GeminiFailoverService {
           } catch (modelErr: any) {
             lastModelError = modelErr;
             const modelErrMsg = modelErr?.message || String(modelErr);
-            const isModelNotFoundError =
+            const isRetryableModelError =
               modelErrMsg.includes('404') ||
+              modelErrMsg.includes('503') ||
+              modelErrMsg.toLowerCase().includes('high demand') ||
+              modelErrMsg.toLowerCase().includes('temporarily unavailable') ||
               modelErrMsg.toLowerCase().includes('not found') ||
-              modelErrMsg.toLowerCase().includes('unsupported');
+              modelErrMsg.toLowerCase().includes('unsupported') ||
+              modelErrMsg.toLowerCase().includes('overloaded');
 
-            if (isModelNotFoundError && candidate !== fallbackModels[fallbackModels.length - 1]) {
-              eventBus.log('warn', 'ai', `Modelo "${candidate}" no disponible en API. Probando modelo alternativo...`);
+            if (isRetryableModelError && candidate !== fallbackModels[fallbackModels.length - 1]) {
+              eventBus.log('warn', 'ai', `Modelo "${candidate}" no disponible temporalmente (${modelErrMsg.slice(0, 80)}...). Probando siguiente modelo...`);
               continue;
             }
             throw modelErr;
