@@ -41,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
             <span className="text-slate-300 font-medium">
-              {settings.selectedModel || 'gemini-2.0-flash'}
+              {settings.selectedModel || 'gemini-2.5-flash'}
             </span>
             {activeKey && (
               <span

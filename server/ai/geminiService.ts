@@ -279,7 +279,7 @@ class GeminiFailoverService {
     throw new Error('Se agotaron los intentos de failover con todas las claves configuradas.');
   }
 
-  public async testKey(key: string, modelName = 'gemini-2.0-flash'): Promise<{ success: boolean; message: string; latencyMs: number }> {
+  public async testKey(key: string, modelName = 'gemini-2.5-flash'): Promise<{ success: boolean; message: string; latencyMs: number }> {
     const start = Date.now();
     try {
       const genAI = new GoogleGenerativeAI(key.trim());
@@ -313,53 +313,37 @@ class GeminiFailoverService {
     const activeKey = this.getActiveKey();
     const apiKey = (customKey || activeKey?.key || '').trim();
 
-    // Modelos base prioritarios con Flash-Lite como preferidos
+    // Modelos activos y verificados de Google AI Studio (2026)
     const defaultCurated = [
       {
-        id: 'gemini-3.5-flash-lite',
-        name: 'models/gemini-3.5-flash-lite',
-        displayName: 'Gemini 3.5 Flash-Lite (Gratuito / Ultrarrápido)',
-        description: 'Modelo insignia actual de Google AI Studio para alto volumen, mínima latencia y cero consumo de saldo.',
-        isFlashLite: true,
+        id: 'gemini-2.5-flash',
+        name: 'models/gemini-2.5-flash',
+        displayName: 'Gemini 2.5 Flash (Recomendado / Estable)',
+        description: 'Modelo insignia de Google AI Studio con soporte óptimo de Function Calling, visión artificial y alta velocidad.',
+        isFlashLite: false,
         recommended: true,
       },
       {
-        id: 'gemini-3.1-flash-lite',
-        name: 'models/gemini-3.1-flash-lite',
-        displayName: 'Gemini 3.1 Flash-Lite (Alta Eficiencia)',
-        description: 'Optimizado para respuestas ultraligeras y alto rendimiento en mensajería de WhatsApp.',
-        isFlashLite: true,
+        id: 'gemini-3.8-flash',
+        name: 'models/gemini-3.8-flash',
+        displayName: 'Gemini 3.8 Flash (Última Generación)',
+        description: 'Modelo de última generación recomendado oficialmente por Google para máximo desempeño.',
+        isFlashLite: false,
         recommended: true,
       },
       {
         id: 'gemini-2.5-flash-lite',
         name: 'models/gemini-2.5-flash-lite',
-        displayName: 'Gemini 2.5 Flash-Lite',
-        description: 'Versión ligera previa para tareas rápidas y económicas de atención.',
+        displayName: 'Gemini 2.5 Flash-Lite (Ultrarrápido)',
+        description: 'Versión ligera de baja latencia para respuestas rápidas y económicas.',
         isFlashLite: true,
         recommended: false,
       },
       {
-        id: 'gemini-2.0-flash',
-        name: 'models/gemini-2.0-flash',
-        displayName: 'Gemini 2.0 Flash',
-        description: 'Modelo multimodal estándar equilibrado.',
-        isFlashLite: false,
-        recommended: false,
-      },
-      {
-        id: 'gemini-1.5-flash',
-        name: 'models/gemini-1.5-flash',
-        displayName: 'Gemini 1.5 Flash',
-        description: 'Modelo clásico con ventana de contexto de 1 millón de tokens.',
-        isFlashLite: false,
-        recommended: false,
-      },
-      {
-        id: 'gemini-1.5-pro',
-        name: 'models/gemini-1.5-pro',
-        displayName: 'Gemini 1.5 Pro',
-        description: 'Mayor razonamiento y análisis complejo (mayor consumo de tokens).',
+        id: 'gemini-2.5-pro',
+        name: 'models/gemini-2.5-pro',
+        displayName: 'Gemini 2.5 Pro (Razonamiento Complejo)',
+        description: 'Modelo avanzado para análisis exhaustivo y consultas ejecutivas de negocio.',
         isFlashLite: false,
         recommended: false,
       },
@@ -386,11 +370,20 @@ class GeminiFailoverService {
           }
 
           const modelId = m.name.replace(/^models\//, '');
+          // Exclude deprecated (1.5, 2.0) and non-chat/specialized models
           if (
             modelId.includes('embedding') ||
             modelId.includes('aqa') ||
             modelId.includes('imagen') ||
-            modelId.includes('tts')
+            modelId.includes('tts') ||
+            modelId.includes('1.5') ||
+            modelId.includes('2.0') ||
+            modelId.includes('robotics') ||
+            modelId.includes('lyria') ||
+            modelId.includes('gemma') ||
+            modelId.includes('banana') ||
+            modelId.includes('preview') ||
+            modelId.includes('computer-use')
           ) {
             continue;
           }
@@ -400,8 +393,8 @@ class GeminiFailoverService {
             modelId.toLowerCase().includes('flash_lite');
 
           const isRecommended =
-            modelId.includes('3.5-flash-lite') ||
-            modelId.includes('3.1-flash-lite');
+            modelId === 'gemini-2.5-flash' ||
+            modelId === 'gemini-3.8-flash';
 
           seenIds.add(modelId);
           fetched.push({
@@ -414,7 +407,7 @@ class GeminiFailoverService {
           });
         }
 
-        // Add 3.5 & 3.1 curated if not already present from endpoint
+        // Add curated standard models if not already discovered
         for (const cur of defaultCurated) {
           if (!seenIds.has(cur.id)) {
             fetched.push(cur);
