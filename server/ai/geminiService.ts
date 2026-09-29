@@ -116,15 +116,15 @@ class GeminiFailoverService {
 
     const systemInstruction = buildSystemInstruction();
     let userModel = (settings.selectedModel || '').trim();
-    if (!userModel || userModel.includes('3.5')) {
-      userModel = 'gemini-2.0-flash';
+    if (!userModel || userModel.includes('3.5') || userModel.includes('2.0') || userModel.includes('1.5')) {
+      userModel = 'gemini-2.5-flash';
     }
     let currentModelName = userModel;
     const fallbackModels = Array.from(new Set([
       currentModelName,
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-pro',
+      'gemini-2.5-flash',
+      'gemini-3.8-flash',
+      'gemini-2.5-pro',
     ]));
 
     while (attempts < Math.max(1, totalKeys)) {

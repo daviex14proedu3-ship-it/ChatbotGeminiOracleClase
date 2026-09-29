@@ -90,7 +90,7 @@ const DEFAULT_DB: AppDatabase = {
       },
     ],
     activeKeyIndex: 0,
-    selectedModel: 'gemini-2.0-flash',
+    selectedModel: 'gemini-2.5-flash',
     systemPrompt: `Eres el asistente virtual inteligente de nuestra empresa en WhatsApp.
 Tu objetivo es responder de manera educada, concisa, profesional y útil a los clientes.
 Utiliza únicamente la información provista en la Base de Conocimientos para responder dudas de servicios, precios y políticas.
