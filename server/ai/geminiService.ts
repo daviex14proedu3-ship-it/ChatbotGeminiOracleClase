@@ -115,13 +115,16 @@ class GeminiFailoverService {
     const maxTurns = settings.memoryLimitTurns || 10;
 
     const systemInstruction = buildSystemInstruction();
-    let currentModelName = settings.selectedModel || 'gemini-2.0-flash';
+    let userModel = (settings.selectedModel || '').trim();
+    if (!userModel || userModel.includes('3.5')) {
+      userModel = 'gemini-2.0-flash';
+    }
+    let currentModelName = userModel;
     const fallbackModels = Array.from(new Set([
       currentModelName,
       'gemini-2.0-flash',
       'gemini-1.5-flash',
-      'gemini-2.5-flash-lite',
-      'gemini-2.5-flash',
+      'gemini-1.5-pro',
     ]));
 
     while (attempts < Math.max(1, totalKeys)) {
@@ -199,17 +202,8 @@ class GeminiFailoverService {
           } catch (modelErr: any) {
             lastModelError = modelErr;
             const modelErrMsg = modelErr?.message || String(modelErr);
-            const isRetryableModelError =
-              modelErrMsg.includes('404') ||
-              modelErrMsg.includes('503') ||
-              modelErrMsg.toLowerCase().includes('high demand') ||
-              modelErrMsg.toLowerCase().includes('temporarily unavailable') ||
-              modelErrMsg.toLowerCase().includes('not found') ||
-              modelErrMsg.toLowerCase().includes('unsupported') ||
-              modelErrMsg.toLowerCase().includes('overloaded');
-
-            if (isRetryableModelError && candidate !== fallbackModels[fallbackModels.length - 1]) {
-              eventBus.log('warn', 'ai', `Modelo "${candidate}" no disponible temporalmente (${modelErrMsg.slice(0, 80)}...). Probando siguiente modelo...`);
+            if (candidate !== fallbackModels[fallbackModels.length - 1]) {
+              eventBus.log('warn', 'ai', `Modelo "${candidate}" falló (${modelErrMsg.slice(0, 80)}...). Probando siguiente modelo...`);
               continue;
             }
             throw modelErr;
