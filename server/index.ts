@@ -86,6 +86,14 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Graceful handler for malformed JSON request bodies
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ error: 'Formato de solicitud JSON malformado o inválido' });
+  }
+  next(err);
+});
+
 // Auth Route (Public)
 app.use('/api/auth', authRouter);
 
@@ -100,6 +108,12 @@ app.use('/api/memory', requireAuth, memoryRouter);
 app.use('/api/bookings', requireAuth, bookingRouter);
 app.use('/api/finance', requireAuth, financeRouter);
 app.use('/api/vouchers/view', express.static(path.resolve(process.cwd(), 'data', 'uploads', 'vouchers')));
+
+// Global API error handler
+app.use('/api', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('[API Unhandled Error]:', err);
+  res.status(err.status || 500).json({ error: err?.message || 'Error interno del servidor' });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
