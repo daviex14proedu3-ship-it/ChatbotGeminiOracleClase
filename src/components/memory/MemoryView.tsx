@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Database,
   Server,
@@ -23,11 +23,19 @@ import {
   ArrowRight,
   Sliders,
   Code2,
+  UserCheck,
+  Plus,
+  Phone,
+  Shield,
+  Check,
+  X,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   DatabaseHealthStatus,
   ConversationRecord,
   ChatMessageRecord,
+  AdminContactRecord,
 } from '../../types';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -36,10 +44,11 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 
 export const MemoryView: React.FC = () => {
   const toast = useToast();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [health, setHealth] = useState<DatabaseHealthStatus | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'conversations' | 'settings'>('conversations');
+  const [activeTab, setActiveTab] = useState<'conversations' | 'admins' | 'settings'>('conversations');
 
   // Conversations & Messages
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
@@ -47,6 +56,24 @@ export const MemoryView: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessageRecord[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Admin Contacts state
+  const [adminContacts, setAdminContacts] = useState<AdminContactRecord[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [adminContactToDelete, setAdminContactToDelete] = useState<AdminContactRecord | null>(null);
+  const [savingAdmin, setSavingAdmin] = useState(false);
+  const [adminForm, setAdminForm] = useState({
+    phone: '',
+    secondary_phones: '',
+    name: '',
+    role: 'admin' as 'superadmin' | 'admin' | 'operator',
+    notes: '',
+    can_view_finances: true,
+    can_view_metrics: true,
+    can_manage_bookings: true,
+    is_active: true,
+  });
 
   // Settings form state
   const [memoryEnabled, setMemoryEnabled] = useState(true);
@@ -72,10 +99,11 @@ export const MemoryView: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [h, conf, convs] = await Promise.all([
+      const [h, conf, convs, admins] = await Promise.all([
         api.getDatabaseHealth(),
         api.getMemoryConfig(),
         api.getConversations(),
+        api.getAdminContacts().catch(() => []),
       ]);
       setHealth(h);
       setMemoryEnabled(conf.memoryEnabled);
@@ -85,6 +113,7 @@ export const MemoryView: React.FC = () => {
       setSupabaseKey(conf.supabaseKey || '');
       setSupabaseDbUrl(conf.supabaseDbUrl || '');
       setConversations(convs);
+      setAdminContacts(admins);
 
       // Auto-select first conversation if none selected
       if (!selectedPhone && convs.length > 0) {
@@ -120,6 +149,67 @@ export const MemoryView: React.FC = () => {
     };
     fetchMsgs();
   }, [selectedPhone]);
+
+  // Auto-scroll to bottom of chat when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Admin contacts handlers
+  const handleSaveAdminContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminForm.phone.trim() || !adminForm.name.trim()) {
+      toast.error('Número de WhatsApp y Nombre son obligatorios');
+      return;
+    }
+    setSavingAdmin(true);
+    try {
+      await api.createAdminContact(adminForm);
+      toast.success(`Contacto administrativo "${adminForm.name}" guardado exitosamente`);
+      setShowAddAdminModal(false);
+      setAdminForm({
+        phone: '',
+        secondary_phones: '',
+        name: '',
+        role: 'admin',
+        notes: '',
+        can_view_finances: true,
+        can_view_metrics: true,
+        can_manage_bookings: true,
+        is_active: true,
+      });
+      const updatedAdmins = await api.getAdminContacts();
+      setAdminContacts(updatedAdmins);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al guardar contacto administrativo');
+    } finally {
+      setSavingAdmin(false);
+    }
+  };
+
+  const handleToggleAdminActive = async (admin: AdminContactRecord) => {
+    try {
+      await api.updateAdminContact(admin.id, { is_active: !admin.is_active });
+      toast.success(`Estado de ${admin.name} actualizado`);
+      const updatedAdmins = await api.getAdminContacts();
+      setAdminContacts(updatedAdmins);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al cambiar estado');
+    }
+  };
+
+  const handleDeleteAdminContact = async () => {
+    if (!adminContactToDelete) return;
+    try {
+      await api.deleteAdminContact(adminContactToDelete.id);
+      toast.success(`Contacto administrativo eliminado`);
+      setAdminContactToDelete(null);
+      const updatedAdmins = await api.getAdminContacts();
+      setAdminContacts(updatedAdmins);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al eliminar contacto');
+    }
+  };
 
   // Save Settings
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -478,6 +568,19 @@ export const MemoryView: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => setActiveTab('admins')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+            activeTab === 'admins'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>Contactos Administrativos ({adminContacts.length})</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('settings')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
             activeTab === 'settings'
@@ -635,57 +738,73 @@ export const MemoryView: React.FC = () => {
                       <p className="text-xs">No hay mensajes guardados en el historial.</p>
                     </div>
                   ) : (
-                    messages.map((m, idx) => {
-                      const isUser = m.role === 'user';
+                    (() => {
+                      const sortedMessages = [...messages].sort((a, b) => {
+                        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                        if (timeA !== timeB) return timeA - timeB;
+                        if (a.role === 'user' && b.role === 'model') return -1;
+                        if (a.role === 'model' && b.role === 'user') return 1;
+                        return 0;
+                      });
+
                       return (
-                        <div
-                          key={m.id || idx}
-                          className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div
-                            className={`max-w-[80%] rounded-2xl p-3.5 shadow-sm text-xs leading-relaxed ${
-                              isUser
-                                ? 'bg-emerald-600 text-white rounded-br-none'
-                                : 'bg-slate-950 text-slate-200 border border-slate-800 rounded-bl-none'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 mb-1 opacity-75 text-[10px] font-semibold">
-                              {isUser ? (
-                                <>
-                                  <User className="w-3 h-3" />
-                                  <span>Cliente</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Bot className="w-3 h-3 text-emerald-400" />
-                                  <span className="text-emerald-400">Gemini (Bot)</span>
-                                </>
-                              )}
-                              <span>·</span>
-                              <span>
-                                {m.created_at
-                                  ? new Date(m.created_at).toLocaleTimeString([], {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })
-                                  : ''}
-                              </span>
-                            </div>
+                        <>
+                          {sortedMessages.map((m, idx) => {
+                            const isUser = m.role === 'user';
+                            return (
+                              <div
+                                key={m.id || idx}
+                                className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
+                              >
+                                <div
+                                  className={`max-w-[80%] rounded-2xl p-3.5 shadow-sm text-xs leading-relaxed ${
+                                    isUser
+                                      ? 'bg-slate-950 text-slate-200 border border-slate-800 rounded-bl-none'
+                                      : 'bg-emerald-600 text-white rounded-br-none shadow-md shadow-emerald-950/20'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1.5 mb-1 opacity-80 text-[10px] font-semibold">
+                                    {isUser ? (
+                                      <>
+                                        <User className="w-3 h-3 text-slate-400" />
+                                        <span className="text-slate-300">Cliente</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Bot className="w-3 h-3 text-emerald-100" />
+                                        <span className="text-white font-bold">Nuestra Respuesta (Bot)</span>
+                                      </>
+                                    )}
+                                    <span>·</span>
+                                    <span>
+                                      {m.created_at
+                                        ? new Date(m.created_at).toLocaleTimeString([], {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })
+                                        : ''}
+                                    </span>
+                                  </div>
 
-                            <p className="whitespace-pre-wrap">{m.content}</p>
+                                  <p className="whitespace-pre-wrap">{m.content}</p>
 
-                            {m.media_id && (
-                              <div className="mt-2 pt-2 border-t border-slate-800/80 text-[10px] font-semibold text-emerald-400 flex items-center gap-1">
-                                <span>📸 Imagen enviada del catálogo:</span>
-                                <code className="bg-slate-900 px-1 py-0.5 rounded text-white font-mono">
-                                  {m.media_id}
-                                </code>
+                                  {m.media_id && (
+                                    <div className="mt-2 pt-2 border-t border-emerald-500/50 text-[10px] font-semibold text-emerald-100 flex items-center gap-1">
+                                      <span>📸 Imagen enviada del catálogo:</span>
+                                      <code className="bg-emerald-700/60 px-1 py-0.5 rounded text-white font-mono">
+                                        {m.media_id}
+                                      </code>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        </div>
+                            );
+                          })}
+                          <div ref={messagesEndRef} />
+                        </>
                       );
-                    })
+                    })()
                   )}
                 </div>
 
@@ -714,7 +833,156 @@ export const MemoryView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: SETTINGS & CREDENTIALS FORM */}
+      {/* TAB 2: ADMIN CONTACTS (PERMISOS ADMINISTRATIVOS & CONTROL DE ACCESO) */}
+      {activeTab === 'admins' && (
+        <div className="space-y-6">
+          {/* Header Info Banner */}
+          <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl shadow-lg relative overflow-hidden">
+            <div className="absolute right-0 top-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+              <div className="space-y-1.5 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-base font-bold text-white">Contactos con Rol Administrativo</h3>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    Seguridad Activa
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Solo los contactos y números registrados en esta lista tienen autorización para consultar métricas financieras globales de la empresa, recaudación del mes, saldos pendientes y el resumen ejecutivo vía WhatsApp o Simulador. Los clientes y alumnos ordinarios solo pueden ver sus propias citas y cuotas individuales.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAddAdminModal(true)}
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-emerald-950/30 self-start md:self-auto"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Agregar Administrador</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Admin Contacts Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {adminContacts.length === 0 ? (
+              <div className="col-span-full p-12 bg-slate-900 border border-slate-800 rounded-3xl text-center space-y-3">
+                <ShieldAlert className="w-10 h-10 text-slate-600 mx-auto" />
+                <h4 className="text-sm font-bold text-slate-300">No hay contactos administrativos configurados</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Agrega al menos un número de WhatsApp administrativo para que el dueño o directores del negocio puedan solicitar reportes financieros y estados de recaudación por chat.
+                </p>
+              </div>
+            ) : (
+              adminContacts.map((admin) => (
+                <div
+                  key={admin.id}
+                  className={`p-5 rounded-3xl border transition flex flex-col justify-between ${
+                    admin.is_active
+                      ? 'bg-slate-900 border-slate-800 hover:border-slate-700 shadow-sm'
+                      : 'bg-slate-950/60 border-slate-800/60 opacity-60'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    {/* Top Row: Name, Avatar & Role Badge */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center font-bold text-sm">
+                          {admin.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                            {admin.name}
+                          </h4>
+                          <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-slate-500" />
+                            {admin.phone === 'admin-dashboard' ? 'Panel Web (Local)' : `+${admin.phone}`}
+                          </p>
+                          {admin.secondary_phones && (
+                            <p className="text-[10px] text-emerald-400/80 font-mono mt-0.5 truncate max-w-[220px]" title={admin.secondary_phones}>
+                              Alt: {admin.secondary_phones}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${
+                          admin.role === 'superadmin'
+                            ? 'bg-purple-500/15 text-purple-400 border-purple-500/30'
+                            : admin.role === 'admin'
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            : 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                        }`}
+                      >
+                        {admin.role}
+                      </span>
+                    </div>
+
+                    {/* Permissions list */}
+                    <div className="pt-2 border-t border-slate-800/80 space-y-1 text-[11px]">
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span>Ver Finanzas & Facturación:</span>
+                        <span className={admin.can_view_finances ? 'text-emerald-400 font-bold' : 'text-slate-600'}>
+                          {admin.can_view_finances ? 'Permitido' : 'No'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span>Consultar Métricas & Reportes:</span>
+                        <span className={admin.can_view_metrics ? 'text-emerald-400 font-bold' : 'text-slate-600'}>
+                          {admin.can_view_metrics ? 'Permitido' : 'No'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span>Gestionar Citas & Agenda:</span>
+                        <span className={admin.can_manage_bookings ? 'text-emerald-400 font-bold' : 'text-slate-600'}>
+                          {admin.can_manage_bookings ? 'Permitido' : 'No'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {admin.notes && (
+                      <p className="text-[11px] text-slate-500 bg-slate-950 p-2.5 rounded-xl border border-slate-800/60 italic">
+                        "{admin.notes}"
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions footer */}
+                  <div className="pt-4 mt-4 border-t border-slate-800 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleAdminActive(admin)}
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg transition border flex items-center gap-1.5 ${
+                        admin.is_active
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      {admin.is_active ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                      <span>{admin.is_active ? 'Activo' : 'Inactivo'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAdminContactToDelete(admin)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                      title="Eliminar contacto administrativo"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: SETTINGS & CREDENTIALS FORM */}
       {activeTab === 'settings' && (
         <form onSubmit={handleSaveSettings} className="space-y-6">
           {/* General Memory Toggle & Turns */}
@@ -1004,6 +1272,166 @@ export const MemoryView: React.FC = () => {
         title="¿Vaciar TODA la memoria conversacional?"
         message="Esta acción vaciará por completo las tablas de mensajes y conversaciones en PostgreSQL, Supabase y el respaldo local. Todos los usuarios empezarán de cero."
         confirmText="Sí, vaciar todo"
+        variant="danger"
+      />
+
+      {/* Add / Register Admin Contact Modal */}
+      <Modal
+        isOpen={showAddAdminModal}
+        onClose={() => setShowAddAdminModal(false)}
+        title="Registrar Contacto Administrativo"
+      >
+        <form onSubmit={handleSaveAdminContact} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">
+              Número de WhatsApp (con código de país) *
+            </label>
+            <input
+              type="text"
+              placeholder="Ej: 51942629785 o 21122699509833"
+              value={adminForm.phone}
+              onChange={(e) => setAdminForm({ ...adminForm, phone: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+              required
+            />
+            <p className="text-[11px] text-slate-500 mt-1">
+              Ingresa el número tal como aparece en WhatsApp (sin espacios ni símbolos +).
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">
+              Números Secundarios / Alternativos (Opcional)
+            </label>
+            <input
+              type="text"
+              placeholder="Ej: 51988887777, 51999991111 (separados por coma)"
+              value={adminForm.secondary_phones}
+              onChange={(e) => setAdminForm({ ...adminForm, secondary_phones: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+            />
+            <p className="text-[11px] text-slate-500 mt-1">
+              Si este administrador usa varios números de WhatsApp, ingrésalos aquí para que todos tengan acceso.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">
+              Nombre o Cargo del Administrador *
+            </label>
+            <input
+              type="text"
+              placeholder="Ej: Ing. David (Dueño) / Gerencia General"
+              value={adminForm.name}
+              onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-300 font-bold mb-1.5">
+                Rol
+              </label>
+              <select
+                value={adminForm.role}
+                onChange={(e) => setAdminForm({ ...adminForm, role: e.target.value as any })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+              >
+                <option value="superadmin">Superadmin (Acceso Total)</option>
+                <option value="admin">Administrador Regular</option>
+                <option value="operator">Operador</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-bold mb-1.5">
+                Estado
+              </label>
+              <select
+                value={adminForm.is_active ? 'true' : 'false'}
+                onChange={(e) => setAdminForm({ ...adminForm, is_active: e.target.value === 'true' })}
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+              >
+                <option value="true">Activo (Habilitado)</option>
+                <option value="false">Inactivo (Suspendido)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800 space-y-2">
+            <span className="font-bold text-slate-300 block mb-1">Permisos Especiales:</span>
+            <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+              <input
+                type="checkbox"
+                checked={adminForm.can_view_finances}
+                onChange={(e) => setAdminForm({ ...adminForm, can_view_finances: e.target.checked })}
+                className="rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-0"
+              />
+              <span>Consultar métricas de facturación y recaudación</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+              <input
+                type="checkbox"
+                checked={adminForm.can_view_metrics}
+                onChange={(e) => setAdminForm({ ...adminForm, can_view_metrics: e.target.checked })}
+                className="rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-0"
+              />
+              <span>Consultar alumnos morosos y deudores</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+              <input
+                type="checkbox"
+                checked={adminForm.can_manage_bookings}
+                onChange={(e) => setAdminForm({ ...adminForm, can_manage_bookings: e.target.checked })}
+                className="rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-0"
+              />
+              <span>Consultar resumen ejecutivo general</span>
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-bold mb-1.5">
+              Notas Adicionales (Opcional)
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Ej: Celular corporativo de la dirección general..."
+              value={adminForm.notes}
+              onChange={(e) => setAdminForm({ ...adminForm, notes: e.target.value })}
+              className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowAddAdminModal(false)}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={savingAdmin}
+              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition flex items-center gap-1.5"
+            >
+              {savingAdmin ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>Guardar Contacto</span>
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete Admin Modal */}
+      <ConfirmModal
+        isOpen={Boolean(adminContactToDelete)}
+        onClose={() => setAdminContactToDelete(null)}
+        onConfirm={handleDeleteAdminContact}
+        title="¿Eliminar contacto administrativo?"
+        message={`¿Estás seguro de revocar el rol administrativo a "${adminContactToDelete?.name}" (+${adminContactToDelete?.phone})? Ya no podrá consultar métricas confidenciales ni reportes por chat.`}
+        confirmText="Sí, revocar y eliminar"
         variant="danger"
       />
     </div>

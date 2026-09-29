@@ -15,6 +15,7 @@ import {
   PaymentVoucherRecord,
   FinancialStatsRecord,
   DebtorSummaryRecord,
+  AdminContactRecord,
 } from '../types';
 
 const BASE_URL = '/api';
@@ -804,6 +805,53 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Error al consultar asistente ejecutivo Gemini');
     }
+    return res.json();
+  },
+
+  // Admin Contacts
+  async getAdminContacts(): Promise<AdminContactRecord[]> {
+    const res = await authFetch(`${BASE_URL}/admin-contacts`);
+    if (!res.ok) throw new Error('Error al cargar contactos administrativos');
+    return res.json();
+  },
+
+  async createAdminContact(data: Partial<AdminContactRecord>): Promise<AdminContactRecord> {
+    const res = await authFetch(`${BASE_URL}/admin-contacts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al agregar contacto administrativo');
+    }
+    return res.json();
+  },
+
+  async updateAdminContact(id: number | string, data: Partial<AdminContactRecord>): Promise<AdminContactRecord> {
+    const res = await authFetch(`${BASE_URL}/admin-contacts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al actualizar contacto administrativo');
+    }
+    return res.json();
+  },
+
+  async deleteAdminContact(id: number | string): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/admin-contacts/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Error al eliminar contacto administrativo');
+    return res.json();
+  },
+
+  async checkAdminContact(phone: string): Promise<{ isAdmin: boolean; name?: string; role?: string }> {
+    const res = await authFetch(`${BASE_URL}/admin-contacts/check/${encodeURIComponent(phone)}`);
+    if (!res.ok) throw new Error('Error al verificar contacto administrativo');
     return res.json();
   },
 };

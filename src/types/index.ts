@@ -306,4 +306,19 @@ export interface DebtorSummaryRecord {
   concepts: string;
 }
 
+export interface AdminContactRecord {
+  id: number;
+  phone: string;
+  secondary_phones?: string;
+  name: string;
+  role: 'superadmin' | 'admin' | 'operator';
+  is_active: boolean;
+  can_view_finances: boolean;
+  can_view_metrics: boolean;
+  can_manage_bookings: boolean;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 

@@ -4,6 +4,7 @@ import { eventBus } from '../utils/logger.js';
 import { buildSystemInstruction } from './promptBuilder.js';
 import { databaseService } from '../storage/databaseService.js';
 import { bookingFunctionDeclarations, executeBookingTool } from './geminiTools.js';
+import { adminContactService } from '../storage/adminContactService.js';
 
 interface UserConversationTurn {
   role: 'user' | 'model';
@@ -114,17 +115,39 @@ class GeminiFailoverService {
     const memoryEnabled = settings.memoryEnabled !== false;
     const maxTurns = settings.memoryLimitTurns || 10;
 
-    const systemInstruction = buildSystemInstruction();
+    // Check if contact has administrative permissions
+    let isAdmin = false;
+    let adminName = contactName;
+    try {
+      const adminRecord = await adminContactService.getAdminContactByPhone(userPhone);
+      if (adminRecord && adminRecord.is_active) {
+        isAdmin = true;
+        adminName = adminRecord.name || contactName;
+      }
+    } catch (e) {
+      console.warn('Could not check admin status for', userPhone, e);
+    }
+
+    const systemInstruction = buildSystemInstruction(isAdmin, adminName);
+
+    // Selected model: strictly prioritize flash / flash-lite, never pro
     let userModel = (settings.selectedModel || '').trim();
-    if (!userModel || userModel.includes('3.5') || userModel.includes('2.0') || userModel.includes('1.5')) {
-      userModel = 'gemini-2.5-flash';
+    if (
+      !userModel ||
+      userModel.toLowerCase().includes('pro') ||
+      userModel.includes('3.5') ||
+      userModel.includes('2.0') ||
+      userModel.includes('1.5') ||
+      userModel.includes('2.5-flash-lite')
+    ) {
+      userModel = 'gemini-3.1-flash-lite';
     }
     let currentModelName = userModel;
     const fallbackModels = Array.from(new Set([
       currentModelName,
-      'gemini-2.5-flash',
+      'gemini-3.1-flash-lite',
       'gemini-3.8-flash',
-      'gemini-2.5-pro',
+      'gemini-2.5-flash',
     ]));
 
     while (attempts < Math.max(1, totalKeys)) {
@@ -136,77 +159,98 @@ class GeminiFailoverService {
         let responseText: string | null = null;
         let lastModelError: any = null;
 
-        // Try candidate models in order if one returns 404 / not found
+        // Try candidate models in order if one fails
         for (const candidate of fallbackModels) {
-          try {
-            const model = genAI.getGenerativeModel({
-              model: candidate,
-              systemInstruction: systemInstruction,
-              tools: [{ functionDeclarations: bookingFunctionDeclarations }],
-            });
+          let retryCount = 0;
+          const maxModelRetries = 1;
 
-            // Retrieve conversation history from DB or in-memory
-            let history: UserConversationTurn[] = [];
-            if (memoryEnabled) {
-              try {
-                history = await databaseService.getConversationHistoryForGemini(userPhone, maxTurns);
-              } catch (dbErr) {
-                console.warn('Error reading history from databaseService, using in-memory:', dbErr);
+          while (retryCount <= maxModelRetries) {
+            try {
+              const model = genAI.getGenerativeModel({
+                model: candidate,
+                systemInstruction: systemInstruction,
+                tools: [{ functionDeclarations: bookingFunctionDeclarations }],
+              });
+
+              // Retrieve conversation history from DB or in-memory
+              let history: UserConversationTurn[] = [];
+              if (memoryEnabled) {
+                try {
+                  history = await databaseService.getConversationHistoryForGemini(userPhone, maxTurns);
+                } catch (dbErr) {
+                  console.warn('Error reading history from databaseService, using in-memory:', dbErr);
+                  history = this.userHistories.get(userPhone) || [];
+                }
+              } else {
                 history = this.userHistories.get(userPhone) || [];
               }
-            } else {
-              history = this.userHistories.get(userPhone) || [];
-            }
-            
-            // Start chat with history
-            const chat = model.startChat({
-              history: history.map(turn => ({
-                role: turn.role,
-                parts: turn.parts,
-              })),
-            });
+              
+              // Start chat with history
+              const chat = model.startChat({
+                history: history.map(turn => ({
+                  role: turn.role,
+                  parts: turn.parts,
+                })),
+              });
 
-            eventBus.log('info', 'ai', `Enviando prompt a ${candidate} con clave "${currentKeyConfig.name}"...`);
-            let chatResult = await chat.sendMessage(incomingMessage);
-            let response = chatResult.response;
+              eventBus.log('info', 'ai', `Enviando prompt a ${candidate} con clave "${currentKeyConfig.name}"...`);
+              let chatResult = await chat.sendMessage(incomingMessage);
+              let response = chatResult.response;
 
-            // Handle Function Calls (Tools) Loop
-            let toolTurns = 0;
-            while (toolTurns < 5) {
-              const calls = response.functionCalls();
-              if (!calls || calls.length === 0) {
-                break;
+              // Handle Function Calls (Tools) Loop
+              let toolTurns = 0;
+              while (toolTurns < 5) {
+                const calls = response.functionCalls();
+                if (!calls || calls.length === 0) {
+                  break;
+                }
+                toolTurns++;
+                const functionResponses: any[] = [];
+                for (const call of calls) {
+                  const toolOutput = await executeBookingTool(call.name, call.args, {
+                    phone: userPhone,
+                    contactName: adminName,
+                    isAdmin,
+                  });
+                  functionResponses.push({
+                    functionResponse: {
+                      name: call.name,
+                      response: toolOutput,
+                    },
+                  });
+                }
+
+                chatResult = await chat.sendMessage(functionResponses);
+                response = chatResult.response;
               }
-              toolTurns++;
-              const functionResponses: any[] = [];
-              for (const call of calls) {
-                const toolOutput = await executeBookingTool(call.name, call.args, {
-                  phone: userPhone,
-                  contactName,
-                });
-                functionResponses.push({
-                  functionResponse: {
-                    name: call.name,
-                    response: toolOutput,
-                  },
-                });
+
+              responseText = response.text();
+              currentModelName = candidate;
+              break; // Success on this candidate
+            } catch (modelErr: any) {
+              lastModelError = modelErr;
+              const modelErrMsg = modelErr?.message || String(modelErr);
+              const isOverloaded = modelErrMsg.includes('503') || 
+                                   modelErrMsg.toLowerCase().includes('overloaded') || 
+                                   modelErrMsg.toLowerCase().includes('unavailable');
+
+              if (isOverloaded && retryCount < maxModelRetries) {
+                retryCount++;
+                eventBus.log('warn', 'ai', `Modelo "${candidate}" temporalmente ocupado (503). Reintentando en 1.5s...`);
+                await new Promise(res => setTimeout(res, 1500));
+                continue;
               }
 
-              chatResult = await chat.sendMessage(functionResponses);
-              response = chatResult.response;
+              if (candidate !== fallbackModels[fallbackModels.length - 1]) {
+                eventBus.log('warn', 'ai', `Modelo "${candidate}" falló (${modelErrMsg.slice(0, 80)}...). Probando siguiente modelo...`);
+                break; // Break inner loop to try next candidate in fallbackModels
+              }
+              throw modelErr;
             }
+          }
 
-            responseText = response.text();
-            currentModelName = candidate;
+          if (responseText) {
             break;
-          } catch (modelErr: any) {
-            lastModelError = modelErr;
-            const modelErrMsg = modelErr?.message || String(modelErr);
-            if (candidate !== fallbackModels[fallbackModels.length - 1]) {
-              eventBus.log('warn', 'ai', `Modelo "${candidate}" falló (${modelErrMsg.slice(0, 80)}...). Probando siguiente modelo...`);
-              continue;
-            }
-            throw modelErr;
           }
         }
 
@@ -279,7 +323,7 @@ class GeminiFailoverService {
     throw new Error('Se agotaron los intentos de failover con todas las claves configuradas.');
   }
 
-  public async testKey(key: string, modelName = 'gemini-2.5-flash'): Promise<{ success: boolean; message: string; latencyMs: number }> {
+  public async testKey(key: string, modelName = 'gemini-3.1-flash-lite'): Promise<{ success: boolean; message: string; latencyMs: number }> {
     const start = Date.now();
     try {
       const genAI = new GoogleGenerativeAI(key.trim());
@@ -313,37 +357,29 @@ class GeminiFailoverService {
     const activeKey = this.getActiveKey();
     const apiKey = (customKey || activeKey?.key || '').trim();
 
-    // Modelos activos y verificados de Google AI Studio (2026)
+    // Modelos activos y verificados de Google AI Studio (2026) - Solo Flash y Flash-Lite
     const defaultCurated = [
       {
-        id: 'gemini-2.5-flash',
-        name: 'models/gemini-2.5-flash',
-        displayName: 'Gemini 2.5 Flash (Recomendado / Estable)',
-        description: 'Modelo insignia de Google AI Studio con soporte óptimo de Function Calling, visión artificial y alta velocidad.',
-        isFlashLite: false,
+        id: 'gemini-3.1-flash-lite',
+        name: 'models/gemini-3.1-flash-lite',
+        displayName: 'Gemini 3.1 Flash-Lite (Ultrarrápido / Recomendado)',
+        description: 'Modelo insignia ligero de Google AI Studio con soporte óptimo de Function Calling, mínima latencia y máxima eficiencia.',
+        isFlashLite: true,
         recommended: true,
       },
       {
         id: 'gemini-3.8-flash',
         name: 'models/gemini-3.8-flash',
-        displayName: 'Gemini 3.8 Flash (Última Generación)',
+        displayName: 'Gemini 3.8 Flash (Alta Capacidad)',
         description: 'Modelo de última generación recomendado oficialmente por Google para máximo desempeño.',
         isFlashLite: false,
         recommended: true,
       },
       {
-        id: 'gemini-2.5-flash-lite',
-        name: 'models/gemini-2.5-flash-lite',
-        displayName: 'Gemini 2.5 Flash-Lite (Ultrarrápido)',
-        description: 'Versión ligera de baja latencia para respuestas rápidas y económicas.',
-        isFlashLite: true,
-        recommended: false,
-      },
-      {
-        id: 'gemini-2.5-pro',
-        name: 'models/gemini-2.5-pro',
-        displayName: 'Gemini 2.5 Pro (Razonamiento Complejo)',
-        description: 'Modelo avanzado para análisis exhaustivo y consultas ejecutivas de negocio.',
+        id: 'gemini-2.5-flash',
+        name: 'models/gemini-2.5-flash',
+        displayName: 'Gemini 2.5 Flash (Estable)',
+        description: 'Modelo alternativo de alta velocidad con soporte de herramientas.',
         isFlashLite: false,
         recommended: false,
       },
@@ -370,8 +406,9 @@ class GeminiFailoverService {
           }
 
           const modelId = m.name.replace(/^models\//, '');
-          // Exclude deprecated (1.5, 2.0) and non-chat/specialized models
+          // Excluir terminantemente modelos 'pro', versiones obsoletas (1.5, 2.0) y no conversacionales
           if (
+            modelId.toLowerCase().includes('pro') ||
             modelId.includes('embedding') ||
             modelId.includes('aqa') ||
             modelId.includes('imagen') ||
@@ -393,7 +430,7 @@ class GeminiFailoverService {
             modelId.toLowerCase().includes('flash_lite');
 
           const isRecommended =
-            modelId === 'gemini-2.5-flash' ||
+            modelId === 'gemini-3.1-flash-lite' ||
             modelId === 'gemini-3.8-flash';
 
           seenIds.add(modelId);

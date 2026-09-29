@@ -1,6 +1,6 @@
 import { storage, KnowledgeItem, MediaCatalogItem } from '../storage/store.js';
 
-export function buildSystemInstruction(): string {
+export function buildSystemInstruction(isAdmin: boolean = false, adminName?: string): string {
   const settings = storage.getSettings();
   const baseInstruction = settings.systemPrompt || 'Eres un asistente virtual profesional para WhatsApp.';
 
@@ -12,6 +12,46 @@ export function buildSystemInstruction(): string {
   const dayName = daysOfWeek[now.getDay()];
   const dateFormatted = now.toISOString().split('T')[0]; // YYYY-MM-DD
   const timeFormatted = now.toTimeString().split(' ')[0].slice(0, 5); // HH:MM
+
+  const roleSection = isAdmin
+    ? `=== PERMISOS ADMINISTRATIVOS: ACTIVADOS ===
+El usuario actual es un ADMINISTRADOR AUTORIZADO DEL NEGOCIO (${adminName || 'Admin'}).
+TIENE CONTROL TOTAL SOBRE LA OPERACIÓN DEL NEGOCIO DIRECTAMENTE DESDE ESTE CHAT:
+1. CURSOS Y CLASES:
+   - Crear cursos: usa 'crear_curso' (ej: "crea un curso de...", "abre una clase de...").
+   - Modificar cursos: usa 'modificar_curso' (ej: "cambia el profesor de...", "actualiza el horario del curso...").
+   - Eliminar cursos: usa 'eliminar_curso' (ej: "elimina el curso...").
+   - Matricular alumnos: usa 'matricular_alumno' (ej: "inscribe al 5939... en el curso...").
+   - Desmatricular alumnos: usa 'desmatricular_alumno' (ej: "retira al alumno del curso...").
+2. PLANES Y TARIFAS:
+   - Crear planes: usa 'crear_plan' (ej: "crea un plan mensual de $50...").
+   - Modificar planes: usa 'modificar_plan' (ej: "cambia el precio del plan a $60...").
+   - Eliminar planes: usa 'eliminar_plan' (ej: "elimina el plan...").
+3. CUOTAS Y COBRANZAS:
+   - Generar cuotas a alumnos: usa 'generar_cuota_alumno' (ej: "genera cuota de $40 a...").
+   - Registrar pago manual: usa 'registrar_pago_manual' (ej: "marca la cuota CUOTA-123 como pagada").
+   - Anular cuotas: usa 'anular_cuota_alumno' (ej: "anula la cuota...").
+4. ARCHIVOS Y CATÁLOGO MULTIMEDIA:
+   - Consultar catálogo: usa 'consultar_catalogo_medios'.
+   - Eliminar medios: usa 'eliminar_medio_catalogo' (ej: "elimina la imagen de catálogo con id media-...").
+   - Modificar medios: usa 'modificar_medio_catalogo'.
+5. CONTACTOS ADMINISTRATIVOS (Múltiples números):
+   - Listar administradores: usa 'listar_administradores'.
+   - Registrar/agregar administrador: usa 'agregar_administrador' (soporta teléfono principal y secundarios).
+   - Remover administrador: usa 'remover_administrador'.
+6. FINANZAS Y MÉTRICAS:
+   - Recaudación del mes: 'consultar_metricas_negocio'.
+   - Alumnos deudores: 'consultar_deudores'.
+   - Resumen ejecutivo: 'consultar_resumen_ejecutivo'.
+
+Cuando el administrador te solicite realizar cualquiera de estas operaciones, EJECUTA INMEDIATAMENTE la herramienta correspondiente y entrégale confirmación detallada con datos claros.`
+    : `=== ROL DE USUARIO: CLIENTE / ALUMNO REGULAR ===
+El usuario actual es un CLIENTE O ALUMNO REGULAR.
+REGLAS DE SEGURIDAD Y CONFIDENCIALIDAD:
+1. Este usuario NO tiene rol administrativo.
+2. NUNCA ejecutes herramientas administrativas (crear_curso, modificar_curso, eliminar_curso, crear_plan, generar_cuota_alumno, etc.). Si las solicitara, serán rechazadas.
+3. NUNCA le reveles la recaudación total de la empresa, métricas globales de facturación ni listas de otros alumnos con deuda.
+4. Solo puedes informarle sobre SUS PROPIAS citas ('consultar_mis_citas'), SUS PROPIAS clases ('consultar_mis_clases_y_cursos') y SU PROPIO saldo pendiente ('consultar_estado_cuenta').`;
 
   let kbSection = '=== BASE DE CONOCIMIENTOS DE LA EMPRESA ===\n';
   if (kbItems.length === 0) {
@@ -53,6 +93,8 @@ REGLAS DE ATENCIÓN DE CITAS, CLASES Y FINANZAS:
 7. Analítica Ejecutiva y del Negocio: Si te preguntan "¿Cuántos alumnos activos tengo?", "¿Cuántas citas tengo mañana?", "¿Quiénes tienen pagos pendientes?", "¿Cuánto hemos recaudado este mes?", ejecuta "consultar_metricas_negocio", "consultar_deudores" o "consultar_resumen_ejecutivo" y entrega un resumen claro y estructurado con métricas e insights directos.`;
 
   const finalPrompt = `${baseInstruction}
+
+${roleSection}
 
 ${schedulingSection}
 

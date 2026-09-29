@@ -86,10 +86,9 @@ REGLAS ESTRICTAS DE VALIDACIÓN:
 4. Devuelve ÚNICAMENTE el JSON puro.`;
 
     const candidateModels = [
-      'gemini-2.5-flash',
+      'gemini-3.1-flash-lite',
       'gemini-3.8-flash',
-      'gemini-2.5-pro',
-      'gemini-2.5-flash-lite',
+      'gemini-2.5-flash',
     ];
 
     let lastError: any = null;

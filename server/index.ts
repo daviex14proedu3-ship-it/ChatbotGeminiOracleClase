@@ -20,6 +20,7 @@ import { logRouter } from './routes/logRoutes.js';
 import { memoryRouter } from './routes/memoryRoutes.js';
 import { bookingRouter } from './routes/bookingRoutes.js';
 import { financeRouter } from './routes/financeRoutes.js';
+import { adminContactRouter } from './routes/adminContactRoutes.js';
 import { reminderService } from './services/reminderService.js';
 import { databaseService } from './storage/databaseService.js';
 import { eventBus } from './utils/logger.js';
@@ -107,6 +108,7 @@ app.use('/api/logs', requireAuth, logRouter);
 app.use('/api/memory', requireAuth, memoryRouter);
 app.use('/api/bookings', requireAuth, bookingRouter);
 app.use('/api/finance', requireAuth, financeRouter);
+app.use('/api/admin-contacts', requireAuth, adminContactRouter);
 app.use('/api/vouchers/view', express.static(path.resolve(process.cwd(), 'data', 'uploads', 'vouchers')));
 
 // Global API error handler

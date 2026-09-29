@@ -744,23 +744,25 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
     mediaId?: string
   ): Promise<void> {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
+    const userCreatedAt = new Date(nowMs - 1000).toISOString();
+    const modelCreatedAt = new Date(nowMs).toISOString();
 
     const userMsg: ChatMessageRecord = {
-      id: 'usr-' + Date.now(),
+      id: 'usr-' + (nowMs - 1000),
       phone: cleanPhone,
       role: 'user',
       content: userText,
-      created_at: nowIso,
+      created_at: userCreatedAt,
     };
 
     const modelMsg: ChatMessageRecord = {
-      id: 'bot-' + Date.now() + 1,
+      id: 'bot-' + nowMs,
       phone: cleanPhone,
       role: 'model',
       content: modelText,
       media_id: mediaId || null,
-      created_at: nowIso,
+      created_at: modelCreatedAt,
     };
 
     // Always mirror to local store as safety copy
@@ -774,10 +776,10 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
     this.localConversations.set(cleanPhone, {
       phone: cleanPhone,
       contact_name: contactName || existingConv?.contact_name || cleanPhone,
-      last_message_at: nowIso,
+      last_message_at: modelCreatedAt,
       message_count: newCount,
-      created_at: existingConv?.created_at || nowIso,
-      updated_at: nowIso,
+      created_at: existingConv?.created_at || userCreatedAt,
+      updated_at: modelCreatedAt,
     });
     this.saveLocalFallback();
 
@@ -795,8 +797,8 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
              ($1, $2, $3, $4, $5),
              ($6, $7, $8, $9, $10)`,
             [
-              cleanPhone, 'user', userText, null, nowIso,
-              cleanPhone, 'model', modelText, mediaId || null, nowIso,
+              cleanPhone, 'user', userText, null, userCreatedAt,
+              cleanPhone, 'model', modelText, mediaId || null, modelCreatedAt,
             ]
           );
 
@@ -809,7 +811,7 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
                last_message_at = EXCLUDED.last_message_at,
                message_count = whatsapp_conversations.message_count + 2,
                updated_at = EXCLUDED.updated_at`,
-            [cleanPhone, contactName || '', nowIso, nowIso, nowIso]
+            [cleanPhone, contactName || '', modelCreatedAt, userCreatedAt, modelCreatedAt]
           );
 
           await client.query('COMMIT');
@@ -846,8 +848,8 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
              ($1, $2, $3, $4, $5),
              ($6, $7, $8, $9, $10)`,
             [
-              cleanPhone, 'user', userText, null, nowIso,
-              cleanPhone, 'model', modelText, mediaId || null, nowIso,
+              cleanPhone, 'user', userText, null, userCreatedAt,
+              cleanPhone, 'model', modelText, mediaId || null, modelCreatedAt,
             ]
           );
           await client.query(
@@ -858,7 +860,7 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
                last_message_at = EXCLUDED.last_message_at,
                message_count = whatsapp_conversations.message_count + 2,
                updated_at = EXCLUDED.updated_at`,
-            [cleanPhone, contactName || '', nowIso, nowIso, nowIso]
+            [cleanPhone, contactName || '', modelCreatedAt, userCreatedAt, modelCreatedAt]
           );
           await client.query('COMMIT');
           this.activeProvider = 'supabase';
@@ -878,16 +880,16 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
       try {
         // Insert messages
         await this.supabaseClient.from('whatsapp_messages').insert([
-          { phone: cleanPhone, role: 'user', content: userText, created_at: nowIso },
-          { phone: cleanPhone, role: 'model', content: modelText, media_id: mediaId || null, created_at: nowIso },
+          { phone: cleanPhone, role: 'user', content: userText, created_at: userCreatedAt },
+          { phone: cleanPhone, role: 'model', content: modelText, media_id: mediaId || null, created_at: modelCreatedAt },
         ]);
 
         // Upsert conversation
         await this.supabaseClient.from('whatsapp_conversations').upsert({
           phone: cleanPhone,
           contact_name: contactName || cleanPhone,
-          last_message_at: nowIso,
-          updated_at: nowIso,
+          last_message_at: modelCreatedAt,
+          updated_at: modelCreatedAt,
         });
 
         this.activeProvider = 'supabase';
@@ -968,7 +970,7 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
           `SELECT id, phone, role, content, media_id, created_at 
            FROM whatsapp_messages 
            WHERE phone = $1 
-           ORDER BY created_at ASC 
+           ORDER BY created_at ASC, id ASC 
            LIMIT $2`,
           [cleanPhone, limit]
         );
@@ -985,7 +987,7 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
           `SELECT id, phone, role, content, media_id, created_at 
            FROM whatsapp_messages 
            WHERE phone = $1 
-           ORDER BY created_at ASC 
+           ORDER BY created_at ASC, id ASC 
            LIMIT $2`,
           [cleanPhone, limit]
         );
@@ -1000,6 +1002,7 @@ CREATE INDEX IF NOT EXISTS idx_wa_messages_phone_created ON whatsapp_messages (p
           .select('id, phone, role, content, media_id, created_at')
           .eq('phone', cleanPhone)
           .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
           .limit(limit);
 
         if (!error && data) {

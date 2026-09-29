@@ -170,12 +170,11 @@ class BaileysManager {
   }
 
   private async handleIncomingMessage(msg: WAMessage): Promise<void> {
+    const remoteJid = msg.key?.remoteJid;
     try {
       if (!msg.message) return;
       if (msg.key.fromMe) return; // Ignore messages sent by the bot
-      if (msg.key.remoteJid === 'status@broadcast') return; // Ignore status updates
-
-      const remoteJid = msg.key.remoteJid;
+      if (remoteJid === 'status@broadcast') return; // Ignore status updates
       if (!remoteJid) return;
 
       const isGroup = remoteJid.endsWith('@g.us');
@@ -307,6 +306,16 @@ class BaileysManager {
       }
     } catch (err: any) {
       eventBus.log('error', 'whatsapp', `Error procesando mensaje entrante: ${err?.message || err}`);
+      // Enviar respuesta de contingencia para que el usuario nunca se quede en visto
+      try {
+        if (remoteJid) {
+          await this.sendMessage(remoteJid, {
+            text: 'Disculpa la demora, tuvimos un breve retraso técnico al procesar tu solicitud. Por favor intenta consultarme nuevamente o déjanos tu mensaje y te atenderemos enseguida.',
+          });
+        }
+      } catch (fallbackErr) {
+        eventBus.log('error', 'whatsapp', `No se pudo enviar mensaje de contingencia a WhatsApp: ${fallbackErr}`);
+      }
     }
   }
 
