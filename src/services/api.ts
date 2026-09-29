@@ -10,6 +10,11 @@ import {
   DatabaseHealthStatus,
   ConversationRecord,
   ChatMessageRecord,
+  PlanRecord,
+  StudentBillRecord,
+  PaymentVoucherRecord,
+  FinancialStatsRecord,
+  DebtorSummaryRecord,
 } from '../types';
 
 const BASE_URL = '/api';
@@ -628,6 +633,177 @@ export const api = {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Error al desmatricular');
+    return res.json();
+  },
+
+  // ============================================================================
+  // FINANZAS, PAGOS, MENSUALIDADES & ASISTENTE IA EJECUTIVO
+  // ============================================================================
+
+  async getFinancialStats(): Promise<FinancialStatsRecord> {
+    const res = await authFetch(`${BASE_URL}/finance/stats`);
+    if (!res.ok) throw new Error('Error al obtener métricas financieras');
+    return res.json();
+  },
+
+  async getDebtors(): Promise<DebtorSummaryRecord[]> {
+    const res = await authFetch(`${BASE_URL}/finance/debtors`);
+    if (!res.ok) throw new Error('Error al cargar deudores');
+    return res.json();
+  },
+
+  async getBills(filters: {
+    studentPhone?: string;
+    status?: string;
+    search?: string;
+    limit?: number;
+  } = {}): Promise<StudentBillRecord[]> {
+    const params = new URLSearchParams();
+    if (filters.studentPhone) params.append('studentPhone', filters.studentPhone);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.limit) params.append('limit', String(filters.limit));
+
+    const res = await authFetch(`${BASE_URL}/finance/bills?${params.toString()}`);
+    if (!res.ok) throw new Error('Error al cargar mensualidades');
+    return res.json();
+  },
+
+  async getBillById(id: number | string): Promise<StudentBillRecord> {
+    const res = await authFetch(`${BASE_URL}/finance/bills/${id}`);
+    if (!res.ok) throw new Error('Error al cargar cuota');
+    return res.json();
+  },
+
+  async createBill(data: {
+    studentPhone: string;
+    studentName: string;
+    planId?: number;
+    concept: string;
+    amount: number;
+    currency?: string;
+    dueDate: string;
+    notes?: string;
+  }): Promise<StudentBillRecord> {
+    const res = await authFetch(`${BASE_URL}/finance/bills`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al generar cuota');
+    }
+    return res.json();
+  },
+
+  async updateBillStatus(id: number | string, status: string): Promise<StudentBillRecord> {
+    const res = await authFetch(`${BASE_URL}/finance/bills/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error('Error al actualizar estado de cuota');
+    return res.json();
+  },
+
+  async sendBillReminder(id: number | string): Promise<{ success: boolean; message: string }> {
+    const res = await authFetch(`${BASE_URL}/finance/bills/${id}/reminder`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al enviar recordatorio de pago');
+    }
+    return res.json();
+  },
+
+  async getVouchers(filters: { phone?: string; status?: string; limit?: number } = {}): Promise<PaymentVoucherRecord[]> {
+    const params = new URLSearchParams();
+    if (filters.phone) params.append('phone', filters.phone);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.limit) params.append('limit', String(filters.limit));
+
+    const res = await authFetch(`${BASE_URL}/finance/vouchers?${params.toString()}`);
+    if (!res.ok) throw new Error('Error al cargar comprobantes');
+    return res.json();
+  },
+
+  async reviewVoucher(
+    id: number | string,
+    status: 'validated' | 'rejected',
+    rejectionReason?: string
+  ): Promise<PaymentVoucherRecord> {
+    const res = await authFetch(`${BASE_URL}/finance/vouchers/${id}/review`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, rejectionReason }),
+    });
+    if (!res.ok) throw new Error('Error al actualizar comprobante');
+    return res.json();
+  },
+
+  async simulateVoucherUpload(file: File, studentPhone?: string, studentName?: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('voucher', file);
+    if (studentPhone) formData.append('studentPhone', studentPhone);
+    if (studentName) formData.append('studentName', studentName);
+
+    const res = await authFetch(`${BASE_URL}/finance/simulate-voucher`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al procesar comprobante con IA Vision');
+    }
+    return res.json();
+  },
+
+  async getPlans(): Promise<PlanRecord[]> {
+    const res = await authFetch(`${BASE_URL}/finance/plans`);
+    if (!res.ok) throw new Error('Error al cargar planes');
+    return res.json();
+  },
+
+  async createPlan(data: Partial<PlanRecord>): Promise<PlanRecord> {
+    const res = await authFetch(`${BASE_URL}/finance/plans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al crear plan');
+    return res.json();
+  },
+
+  async updatePlan(id: number | string, data: Partial<PlanRecord>): Promise<PlanRecord> {
+    const res = await authFetch(`${BASE_URL}/finance/plans/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Error al actualizar plan');
+    return res.json();
+  },
+
+  async deletePlan(id: number | string): Promise<any> {
+    const res = await authFetch(`${BASE_URL}/finance/plans/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Error al eliminar plan');
+    return res.json();
+  },
+
+  async consultExecutiveAI(prompt: string): Promise<{ success: boolean; response: string }> {
+    const res = await authFetch(`${BASE_URL}/finance/ai-consult`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al consultar asistente ejecutivo Gemini');
+    }
     return res.json();
   },
 };

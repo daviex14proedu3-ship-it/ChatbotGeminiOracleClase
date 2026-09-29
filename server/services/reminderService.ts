@@ -1,4 +1,5 @@
 import { bookingService } from '../storage/bookingService.js';
+import { financeService } from '../storage/financeService.js';
 import { baileysManager } from '../whatsapp/baileysClient.js';
 import { eventBus } from '../utils/logger.js';
 
@@ -83,6 +84,45 @@ Hola *${item.client_name}*, te recordamos que tienes una cita confirmada en nues
         } catch (sendErr: any) {
           eventBus.log('error', 'whatsapp', `Fallo al enviar recordatorio a ${item.phone}: ${sendErr?.message || sendErr}`);
         }
+      }
+
+      // 2. Recordatorios preventivos de cobros / mensualidades próximas a vencer
+      try {
+        const upcomingBills = await financeService.getUpcomingBillsForReminders(3);
+        for (const bill of upcomingBills) {
+          try {
+            const cleanPhone = bill.student_phone.replace(/[^0-9]/g, '');
+            if (!cleanPhone) continue;
+
+            const remoteJid = `${cleanPhone}@s.whatsapp.net`;
+            const paymentMsg = `🔔 *AVISO PREVENTIVO DE VENCIMIENTO*
+
+Hola *${bill.student_name}*, esperamos te encuentres muy bien. Te recordamos cordialmente tu próxima mensualidad:
+
+📌 *Concepto:* ${bill.concept}
+💰 *Monto a Pagar:* $${bill.balance_pending.toFixed(2)} ${bill.currency}
+📅 *Fecha Límite:* ${bill.due_date}
+🔖 *Código de Cuota:* ${bill.bill_code}
+
+Puedes realizar tu abono mediante transferencia, Yape, Plin o depósito, y enviarnos la foto de tu comprobante directamente por este chat. ¡Nuestra IA lo validará al instante!`;
+
+            await baileysManager.sendMessage(remoteJid, { text: paymentMsg });
+            await financeService.markReminderSent(bill.id);
+
+            eventBus.log(
+              'success',
+              'whatsapp',
+              `Recordatorio preventivo de pago enviado a ${bill.student_name} (${cleanPhone}) por $${bill.balance_pending}`
+            );
+
+            sentCount++;
+            await new Promise(r => setTimeout(r, 2000));
+          } catch (billErr: any) {
+            eventBus.log('error', 'whatsapp', `Fallo al enviar aviso de cobro a ${bill.student_phone}: ${billErr?.message || billErr}`);
+          }
+        }
+      } catch (errBills: any) {
+        console.warn('Error verificando cuotas próximas a vencer:', errBills?.message || errBills);
       }
 
       return sentCount;

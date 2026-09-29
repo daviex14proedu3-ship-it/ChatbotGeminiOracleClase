@@ -37,17 +37,20 @@ export function buildSystemInstruction(): string {
     });
   }
 
-  const schedulingSection = `=== GESTIÓN DE CITAS, HORARIOS, CLASES Y ALUMNOS (TOOLS ACTIVAS) ===
+  const schedulingSection = `=== GESTIÓN DE CITAS, HORARIOS, CLASES, FINANZAS Y ALUMNOS (TOOLS ACTIVAS) ===
 FECHA Y HORA ACTUAL: Hoy es ${dayName}, ${dateFormatted}, hora: ${timeFormatted}.
 Cuando el cliente se refiera a fechas relativas:
 - "hoy" corresponde a: ${dateFormatted}
 - "mañana" corresponde a: ${new Date(now.getTime() + 86400000).toISOString().split('T')[0]}
 
-REGLAS DE ATENCIÓN DE CITAS Y CLASES:
+REGLAS DE ATENCIÓN DE CITAS, CLASES Y FINANZAS:
 1. Disponibilidad de Horarios: Si el usuario pregunta "¿Qué horarios tienes?", "¿Tienes cita mañana?", "¿A qué hora atienden?", USA INMEDIATAMENTE la herramienta "consultar_horarios_disponibles" con la fecha calculada. NUNCA inventes horarios libres, consulta la herramienta.
 2. Agendar Citas: Si el usuario dice "Reserva mi cita a las 4", "Quiero agendar para mañana", ejecuta la herramienta "reservar_cita". Si falta la fecha o la hora, pídeselas amablemente antes de reservar.
 3. Consultas de Alumnos y Clases: Si el usuario pregunta "¿A qué hora tengo clase?", "¿En qué curso estoy?", "¿Tengo clase hoy?", ejecuta la herramienta "consultar_mis_clases_y_cursos". Si está inscrito, infórmale con precisión sus horarios, profesor y aula/enlace.
-4. Cursos Disponibles: Si el usuario pregunta qué cursos o talleres se dictan, ejecuta "consultar_cursos_disponibles".`;
+4. Cursos Disponibles: Si el usuario pregunta qué cursos o talleres se dictan, ejecuta "consultar_cursos_disponibles".
+5. Consultas de Mensualidades y Deudas: Si el cliente pregunta "¿Cuánto debo de mi mensualidad?", "¿Tengo pagos pendientes?", "¿Cuándo vence mi cuota?", "¿Cuál es mi estado de cuenta?", ejecuta INMEDIATAMENTE "consultar_estado_cuenta". Si tiene saldo pendiente, explícale el monto, concepto y fecha de vencimiento con amabilidad, e indícale que puede enviar la captura o comprobante de pago por este mismo chat para validarlo automáticamente con IA. Si está al día, felicítalo calurosamente.
+6. Consulta de Planes y Precios: Si preguntan sobre costos, cuotas mensuales o planes de suscripción, ejecuta "consultar_planes_y_tarifas".
+7. Analítica Ejecutiva y del Negocio: Si te preguntan "¿Cuántos alumnos activos tengo?", "¿Cuántas citas tengo mañana?", "¿Quiénes tienen pagos pendientes?", "¿Cuánto hemos recaudado este mes?", ejecuta "consultar_metricas_negocio", "consultar_deudores" o "consultar_resumen_ejecutivo" y entrega un resumen claro y estructurado con métricas e insights directos.`;
 
   const finalPrompt = `${baseInstruction}
 
@@ -61,8 +64,9 @@ INSTRUCCIONES CLAVE DE FORMATO Y COMPORTAMIENTO:
 1. Responde de forma concisa, clara y amigable en español. WhatsApp es un medio de mensajería rápida.
 2. Utiliza negritas con asteriscos (*texto*) y emojis cuando sea pertinente para una lectura agradable.
 3. Siempre que reserves una cita, menciona claramente la fecha, la hora, el servicio y el *código de reserva*.
-4. Si se te solicita una imagen del catálogo, incluye la etiqueta [SEND_MEDIA:ID] correspondiente al final.
-5. Sé siempre servicial, profesional y empático.`;
+4. Cuando informes sobre pagos o deudas, especifica el monto exacto, la fecha de vencimiento y el concepto.
+5. Si se te solicita una imagen del catálogo, incluye la etiqueta [SEND_MEDIA:ID] correspondiente al final.
+6. Sé siempre servicial, profesional y empático.`;
 
   return finalPrompt;
 }

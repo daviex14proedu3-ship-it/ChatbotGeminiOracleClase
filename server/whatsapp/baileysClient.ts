@@ -5,6 +5,7 @@ import makeWASocket, {
   proto,
   WAMessage,
   GroupMetadata,
+  downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode';
 import path from 'path';
@@ -13,6 +14,8 @@ import pino from 'pino';
 import { storage } from '../storage/store.js';
 import { eventBus } from '../utils/logger.js';
 import { geminiService } from '../ai/geminiService.js';
+import { voucherVisionService } from '../services/voucherVisionService.js';
+import { financeService } from '../storage/financeService.js';
 
 export interface GroupInfo {
   id: string;
@@ -188,20 +191,90 @@ class BaileysManager {
         return;
       }
 
-      // Extract message text
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        msg.message.imageMessage?.caption ||
-        '';
-
-      if (!text || text.trim() === '') return;
-
       const senderPhone = remoteJid
         .replace('@s.whatsapp.net', '')
         .replace('@g.us', '')
         .replace('@lid', '');
       const pushName = msg.pushName || senderPhone;
+
+      const isImage = Boolean(msg.message.imageMessage);
+      const imageCaption = msg.message.imageMessage?.caption || '';
+      const text =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        imageCaption ||
+        '';
+
+      // 1. Si el mensaje contiene una imagen, procesar con Gemini Vision (Validación de Comprobantes)
+      if (isImage) {
+        eventBus.log('info', 'whatsapp', `📷 Imagen recibida de ${pushName} (${senderPhone}). Inspeccionando comprobante con Gemini Vision...`);
+        try {
+          const buffer = await downloadMediaMessage(
+            msg,
+            'buffer',
+            {},
+            {
+              logger: pino({ level: 'silent' }),
+              reuploadRequest: this.sock?.updateMediaMessage,
+            }
+          );
+
+          if (buffer && (buffer as Buffer).length > 0) {
+            const filename = voucherVisionService.saveVoucherImage(buffer as Buffer, 'jpg');
+            const analysis = await voucherVisionService.analyzeVoucher(buffer as Buffer, 'image/jpeg');
+
+            if (analysis.isValidVoucher && analysis.amount > 0) {
+              const paymentResult = await financeService.applyVoucherPayment({
+                studentPhone: senderPhone,
+                studentName: pushName,
+                amountDetected: analysis.amount,
+                currency: analysis.currency,
+                bankOrPlatform: analysis.bankOrPlatform,
+                operationNumber: analysis.operationNumber,
+                paymentDate: analysis.paymentDate,
+                imageFilename: filename,
+                geminiAnalysisRaw: analysis,
+                validatedBy: 'gemini_ai',
+              });
+
+              let reply = `✅ *¡COMPROBANTE VALIDADO CON ÉXITO!* 🎉\n\n`;
+              reply += `Hola *${pushName}*, hemos verificado tu pago automáticamente con IA:\n\n`;
+              reply += `💳 *Entidad/Canal:* ${analysis.bankOrPlatform}\n`;
+              reply += `💰 *Monto Abonado:* $${analysis.amount.toFixed(2)} ${analysis.currency || 'USD'}\n`;
+              if (analysis.operationNumber) {
+                reply += `🔖 *N° Operación:* ${analysis.operationNumber}\n`;
+              }
+              reply += `📅 *Fecha:* ${analysis.paymentDate}\n\n`;
+
+              if (paymentResult.bill) {
+                reply += `📌 *Concepto aplicado:* ${paymentResult.bill.concept}\n`;
+                if (paymentResult.bill.status === 'paid') {
+                  reply += `🎉 *Estado:* ¡Cuota totalmente CANCELADA! Saldo pendiente: $0.00.\n\n`;
+                } else {
+                  reply += `📊 *Saldo pendiente:* $${paymentResult.bill.balance_pending.toFixed(2)} (Abono parcial registrado).\n\n`;
+                }
+              }
+
+              reply += `¡Muchas gracias por tu pago! Tu estado de cuenta ha quedado actualizado en nuestro sistema.`;
+
+              await this.sendMessage(remoteJid, { text: reply });
+              eventBus.log('success', 'whatsapp', `Voucher de ${pushName} (${senderPhone}) validado por $${analysis.amount} y confirmado.`);
+              return;
+            } else {
+              // Si la imagen no fue identificada como comprobante y no tiene texto
+              if (!text || text.trim() === '') {
+                const politeMsg = `Hemos recibido tu imagen. 📸 Si se trata de un comprobante de pago o transferencia, por favor asegúrate de que el monto, la entidad bancaria y el número de operación sean legibles para poder validarlo automáticamente. Si tienes alguna duda, escríbenos por aquí.`;
+                await this.sendMessage(remoteJid, { text: politeMsg });
+                return;
+              }
+            }
+          }
+        } catch (visionErr: any) {
+          eventBus.log('warn', 'whatsapp', `No se pudo procesar la imagen como voucher: ${visionErr?.message || visionErr}`);
+        }
+      }
+
+      if (!text || text.trim() === '') return;
 
       eventBus.log('info', 'whatsapp', `Mensaje recibido de ${pushName} (${senderPhone}): "${text.slice(0, 50)}..."`);
 

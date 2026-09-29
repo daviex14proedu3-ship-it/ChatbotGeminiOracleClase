@@ -234,3 +234,76 @@ export interface BookingStats {
   activeCourses: number;
 }
 
+export interface PlanRecord {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  price: number;
+  billing_cycle: 'monthly' | 'biweekly' | 'one_time' | 'annual';
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface StudentBillRecord {
+  id: number;
+  bill_code: string;
+  student_phone: string;
+  student_name: string;
+  plan_id?: number | null;
+  concept: string;
+  amount: number;
+  amount_paid: number;
+  balance_pending: number;
+  currency: string;
+  due_date: string;
+  status: 'pending' | 'partial' | 'paid' | 'overdue' | 'cancelled';
+  notes?: string;
+  reminder_sent: boolean;
+  reminder_sent_at?: string | null;
+  paid_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PaymentVoucherRecord {
+  id: number;
+  voucher_code: string;
+  student_phone: string;
+  student_name?: string;
+  bill_id?: number | null;
+  amount_detected: number;
+  amount_approved: number;
+  currency: string;
+  bank_or_platform?: string;
+  operation_number?: string;
+  payment_date?: string;
+  image_filename?: string;
+  gemini_analysis?: any;
+  status: 'validated' | 'pending_review' | 'rejected';
+  rejection_reason?: string;
+  validated_by: 'gemini_ai' | 'admin';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FinancialStatsRecord {
+  totalCollectedMonth: number;
+  totalPendingAmount: number;
+  activeStudents: number;
+  overdueBillsCount: number;
+  vouchersValidatedToday: number;
+  collectionRatePct: number;
+}
+
+export interface DebtorSummaryRecord {
+  student_phone: string;
+  student_name: string;
+  total_debt: number;
+  bills_count: number;
+  oldest_due_date: string;
+  concepts: string;
+}
+
+

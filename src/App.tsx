@@ -10,6 +10,7 @@ import { MediaCatalogView } from './components/media/MediaCatalogView';
 import { ChatSimulator } from './components/simulator/ChatSimulator';
 import { MemoryView } from './components/memory/MemoryView';
 import { BookingsView } from './components/bookings/BookingsView';
+import { FinanceView } from './components/finance/FinanceView';
 import { LiveLogsView } from './components/logs/LiveLogsView';
 import { LoginPage } from './components/auth/LoginPage';
 import { WhatsAppStatus, AppSettings, AuthUser } from './types';
@@ -160,6 +161,10 @@ export const App: React.FC = () => {
       title: 'Agenda de Citas, Horarios y Clases',
       subtitle: 'Disponibilidad dinámica con Gemini, reservas automáticas, cursos y recordatorios por WhatsApp.',
     },
+    finance: {
+      title: 'Finanzas, Mensualidades & Pagos IA',
+      subtitle: 'Control de deudas, validación de vouchers con Gemini Vision y analítica ejecutiva en tiempo real.',
+    },
     groups: {
       title: 'Extracción & Envío a Grupos de WhatsApp',
       subtitle: 'Filtra grupos donde puedes escribir o eres admin, y envía mensajes masivos.',
@@ -251,6 +256,8 @@ export const App: React.FC = () => {
           )}
 
           {currentTab === 'bookings' && <BookingsView />}
+
+          {currentTab === 'finance' && <FinanceView />}
 
           {currentTab === 'groups' && <GroupList status={status} />}
 

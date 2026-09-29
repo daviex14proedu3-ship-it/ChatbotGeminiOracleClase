@@ -19,6 +19,7 @@ import { mediaRouter } from './routes/mediaRoutes.js';
 import { logRouter } from './routes/logRoutes.js';
 import { memoryRouter } from './routes/memoryRoutes.js';
 import { bookingRouter } from './routes/bookingRoutes.js';
+import { financeRouter } from './routes/financeRoutes.js';
 import { reminderService } from './services/reminderService.js';
 import { databaseService } from './storage/databaseService.js';
 import { eventBus } from './utils/logger.js';
@@ -97,6 +98,8 @@ app.use('/api/media', mediaRouter);
 app.use('/api/logs', requireAuth, logRouter);
 app.use('/api/memory', requireAuth, memoryRouter);
 app.use('/api/bookings', requireAuth, bookingRouter);
+app.use('/api/finance', requireAuth, financeRouter);
+app.use('/api/vouchers/view', express.static(path.resolve(process.cwd(), 'data', 'uploads', 'vouchers')));
 
 // Health check
 app.get('/api/health', (req, res) => {

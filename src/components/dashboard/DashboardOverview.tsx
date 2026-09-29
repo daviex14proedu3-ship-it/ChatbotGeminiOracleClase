@@ -14,6 +14,7 @@ import {
   Zap,
   Database,
   Calendar,
+  DollarSign,
 } from 'lucide-react';
 import { WhatsAppStatus, AppSettings } from '../../types';
 import { ConnectionCard } from '../whatsapp/ConnectionCard';
@@ -77,7 +78,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
         {/* Card 1: Groups */}
         <div
           onClick={() => onSelectTab('groups')}
@@ -212,6 +213,26 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <span className="text-2xl font-black text-white">IA Booking</span>
             <p className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
               <span>Citas & Horarios</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-1 transition" />
+            </p>
+          </div>
+        </div>
+
+        {/* Card 7: Finanzas & Pagos IA */}
+        <div
+          onClick={() => onSelectTab('finance')}
+          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-emerald-500/50 transition cursor-pointer group shadow-lg flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400">Finanzas & Pagos</span>
+            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 group-hover:scale-110 transition">
+              <DollarSign className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <span className="text-2xl font-black text-white">IA Vision</span>
+            <p className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+              <span>Cuotas & Vouchers</span>
               <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-1 transition" />
             </p>
           </div>
